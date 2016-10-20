@@ -1,5 +1,5 @@
-DESIGN          = system
-UCF		= creator
+DESIGN          = wb_gpio
+UCF		= wb_gpio
 PINS            = $(UCF).ucf
 DEVICE          = xc6slx4-2tqg144
 BGFLAGS         = -g TdoPin:PULLNONE -g DonePin:PULLUP \
@@ -9,35 +9,9 @@ XILINXCADROOT   = /opt/Xilinx/14.7/ISE_DS/ISE/bin/lin/ise
 SIMGEN_OPTIONS  = -p $(FPGA_ARCH) -lang $(LANGUAGE)
 IVERILOG        = iverilog
 
-MCU_SRC         = rtl/wb_mcu_bram/wb_mcu_bram.v
 
-EVERLOOP_SRC    = rtl/wb_everloop/everloop_bram.v \
-                  rtl/wb_everloop/everloop.v \
-                  rtl/wb_everloop/wb_everloop.v
+SRC             = $(DESIGN).v mux_io.v single_mux.v core_clk.v  pwm.v  timer_core.v  timer.v 
 
-SPI_SRC         = rtl/wb_spi/wb_spi.v \
-                  rtl/wb_spi/spi.v
-
-GPIO_SRC        = rtl/wb_gpio/wb_gpio.v \
-                  rtl/wb_gpio/pwm.v \
-                  rtl/wb_gpio/core_clk.v \
-                  rtl/wb_gpio/timer.v \
-                  rtl/wb_gpio/timer_core.v \
-                  rtl/wb_gpio/mux_io.v \
-                  rtl/wb_gpio/single_mux.v
-
-SRC             = $(DESIGN).v \
-                  creator_dcm.v \
-                  rtl/wb_spi_berry/spi2ad_bus_sync.v \
-                  rtl/wb_bram/bram.v \
-                  rtl/wb_conbus/conbus_arb.v \
-                  rtl/wb_conbus/conbus.v \
-                  $(MCU_SRC) \
-                  $(SPI_SRC) \
-                  $(MIC_SRC) \
-                  $(UART_SRC) \
-                  $(GPIO_SRC) \
-                  $(EVERLOOP_SRC)
 
 SIM_SRC = $(DESIGN)_TB.v          \
           ../thrid_party/unisims/DCM_SP.v     \
@@ -73,7 +47,7 @@ build/project.xst: build/project.src
 	echo "run" > $@
 	echo "-top $(DESIGN) " >> $@
 	echo "-p $(DEVICE)" >> $@
-	echo "-opt_mode Area" >> $@
+	echo "-opt_mode Speed" >> $@
 	echo "-opt_level 2" >> $@
 	echo "-ifn project.src" >> $@
 	echo "-ifmt mixed" >> $@

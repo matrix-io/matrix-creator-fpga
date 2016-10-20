@@ -1,7 +1,7 @@
 /*
  * Copyright 2016 <Admobilize>
  * MATRIX Labs  [http://creator.matrix.one]
- * This file is part of MATRIX Creator firmware for MCU
+ * This file is part of MATRIX Creator HDL for Spartan 6
  *
  * MATRIX Creator HDL is like free software: you can redistribute 
  * it and/or modify it under the terms of the GNU General Public License 
@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-
+ 
 module wb_mcu_bram #(
 	parameter adr_width = 10,
 	parameter data_width = 8
@@ -66,7 +65,7 @@ assign mcu_sram_data = T?8'bZ:mcu_rdBus;
 
 
 /* synchronize assignment */
-always  @(negedge mcu_clk)
+always  @(posedge mcu_clk)
 begin
   mcu_sncs   <= mcu_ncs;
   mcu_snwe   <= mcu_nwe;
@@ -75,7 +74,7 @@ begin
 end
 
 /* write access cpu to bram */
-always @(posedge mcu_clk)
+always @(negedge mcu_clk)
 begin
  mcu_wdBus <= mcu_buffer_data;
  case (mcu_w_st)
@@ -97,7 +96,7 @@ end
 RAMB16_S9_S18 ram
 (
   /* MCU port */
-  .CLKA(~mcu_clk),  /* Port A Clock */
+  .CLKA(mcu_clk),  /* Port A Clock */
   .ENA(1'b1),  /* Port A RAM Enable Input */
   .SSRA(1'b0),  /* Port A Synchronous Set/Reset Input */
   .WEA(mcu_we),  /* Port A Write Enable Input */
@@ -117,7 +116,6 @@ RAMB16_S9_S18 ram
   .ADDRB(wb_adr_i),  /* Port B 10-bit Address Input */
   .DIB(wb_dat_i),  /* Port B 8-bit Data Input */
   .DIPB(2'b00)  /* Port B 1-bit parity Input */
-
 );
 
 

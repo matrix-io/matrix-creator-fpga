@@ -29,23 +29,46 @@ TIMESPEC TS_PER_SCK = PERIOD "sck_grp" 20.0 ns HIGH 50%;
 NET "clk_50"       LOC = "P84" | IOSTANDARD = LVCMOS33;
 
 #LED
-NET "debug_led"    LOC = "P39" | IOSTANDARD = LVCMOS33 | DRIVE = 24;        
-NET "everloop_ctl" LOC = "P56"| IOSTANDARD = LVCMOS33;
+NET "debug_led"     LOC = "P39" | IOSTANDARD = LVCMOS33 | DRIVE = 24;        
+NET "everloop_ctl"  LOC = "P56"| IOSTANDARD = LVCMOS33;
 
-NET "resetn"    LOC = "P123" | IOSTANDARD = LVCMOS33 | PULLDOWN;     #RPI_GPIO12
+NET "resetn"        LOC = "P123" | IOSTANDARD = LVCMOS33 | PULLDOWN; #RPI_GPIO12
 
-NET "sck"       LOC = "P115" | IOSTANDARD = LVCMOS33;        
-NET "mosi"      LOC = "P112" | IOSTANDARD = LVCMOS33;        
-NET "miso"      LOC = "P114" | IOSTANDARD = LVCMOS33;        
-NET "ss"        LOC = "P116" | IOSTANDARD = LVCMOS33;        
-	
-#NET "RX_PI"      LOC = "P119" | IOSTANDARD = LVCMOS33;     #RPI_GPIO16
-#NET "TX_PI"      LOC = "P120" | IOSTANDARD = LVCMOS33;     #RPI_GPIO13
+NET "sck"           LOC = "P115" | IOSTANDARD = LVCMOS33;        
+NET "mosi"          LOC = "P112" | IOSTANDARD = LVCMOS33;        
+NET "miso"          LOC = "P114" | IOSTANDARD = LVCMOS33;        
+NET "ss"            LOC = "P116" | IOSTANDARD = LVCMOS33;        
 
-NET "IR_RING_EN" LOC = "P143" | IOSTANDARD = LVCMOS33;
-NET "RX_IR"      LOC = "P144" | IOSTANDARD = LVCMOS33;        
-NET "TX_IR"      LOC = "P118" | IOSTANDARD = LVCMOS33;
 
+#UART
+
+NET "UART_TX_PI"      LOC = "P70"| IOSTANDARD = LVCMOS33;        
+NET "UART_RX_PI"      LOC = "P69"| IOSTANDARD = LVCMOS33;    
+
+NET "RX_PI"         LOC = "P119" | IOSTANDARD = LVCMOS33; #RPI_GPIO16
+NET "TX_PI"         LOC = "P120" | IOSTANDARD = LVCMOS33; #RPI_GPIO13
+NET "IR_RING_EN_PI" LOC = "P138" | IOSTANDARD = LVCMOS33; #RPI_GPIO5
+
+NET "IR_RING_EN"    LOC = "P143" | IOSTANDARD = LVCMOS33;
+NET "RX_IR"         LOC = "P144" | IOSTANDARD = LVCMOS33;        
+NET "TX_IR"         LOC = "P118" | IOSTANDARD = LVCMOS33;
+
+#NET "RPI_GPIO6"       LOC = "P139" | IOSTANDARD = LVCMOS33; #RPI_GPIO6
+NET "IRQ_NFC"       LOC = "P1"   | IOSTANDARD = LVCMOS33; #RPI_GPIO25
+
+#######################
+# MIC ARRAY           #
+#######################
+
+#NET "pdm_data<0>" LOC = "P45" | IOSTANDARD = LVCMOS33;
+#NET "pdm_data<1>" LOC = "P46" | IOSTANDARD = LVCMOS33;
+#NET "pdm_data<2>" LOC = "P47" | IOSTANDARD = LVCMOS33;
+#NET "pdm_data<3>" LOC = "P58" | IOSTANDARD = LVCMOS33;
+#NET "pdm_data<4>" LOC = "P59" | IOSTANDARD = LVCMOS33;
+#NET "pdm_data<5>" LOC = "P64" | IOSTANDARD = LVCMOS33;
+#NET "pdm_data<6>" LOC = "P65" | IOSTANDARD = LVCMOS33;
+#NET "pdm_data<7>" LOC = "P44" | IOSTANDARD = LVCMOS33;
+#NET "pdm_clk"     LOC = "P67" | IOSTANDARD = LVCMOS33;
 
 #######################
 # SAM 3S INTERFACE    #
@@ -80,4 +103,52 @@ NET "mcu_sram_data<0>"  LOC = "P6" | IOSTANDARD = LVCMOS33;
 NET "mcu_nwe"   LOC = "P97" | IOSTANDARD = LVCMOS33;
 NET "mcu_nrd"   LOC = "P87" | IOSTANDARD = LVCMOS33;
 NET "mcu_ncs"   LOC = "P8" | IOSTANDARD = LVCMOS33;
+#NET "mcu_nwait" LOC = "P10" | IOSTANDARD = LVCMOS33;
 
+#######################
+#    EXP-CONN         #
+#######################
+
+NET "gpio_io<15>" LOC="P102" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<14>" LOC="P101" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<13>" LOC="P99" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<12>" LOC="P98" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<11>" LOC="P95" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<10>" LOC="P94" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<9>" LOC="P93" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<8>" LOC="P92" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<7>" LOC="P88" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<6>" LOC="P85" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<5>" LOC="P83" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<4>" LOC="P82" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<3>" LOC="P81" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<2>" LOC="P80" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<1>" LOC="P79" | IOSTANDARD = LVCMOS33;
+NET "gpio_io<0>" LOC="P78" | IOSTANDARD = LVCMOS33;
+
+#########################
+#        ZIGBEE         #
+#########################
+
+NET "Z_RX"            LOC = "P34" | IOSTANDARD = LVCMOS33;      
+NET "Z_TX"            LOC = "P35" | IOSTANDARD = LVCMOS33;
+#NET "ZnRTS"           LOC = "P33" | IOSTANDARD = LVCMOS33;
+#NET "ZnCTS"           LOC = "P32" | IOSTANDARD = LVCMOS33;
+
+#########################
+#          NFC          #
+#########################
+
+NET "nfc_miso"      LOC = "P134" | IOSTANDARD = LVCMOS33;
+NET "nfc_cs"        LOC = "P141" | IOSTANDARD = LVCMOS33;
+NET "nfc_mosi"      LOC = "P133" | IOSTANDARD = LVCMOS33;
+NET "nfc_sck"       LOC = "P126" | IOSTANDARD = LVCMOS33;
+NET "nfc_rst"       LOC = "P111" | IOSTANDARD = LVCMOS33;
+NET "nfc_irq"       LOC = "P140" | IOSTANDARD = LVCMOS33;
+
+########################
+#         I2C          #
+########################
+
+# NET "I2C_SDA"       LOC = "P74" | IOSTANDARD = LVCMOS33;
+# NET "I2C_SCL"       LOC = "P75" | IOSTANDARD = LVCMOS33;

@@ -18,95 +18,89 @@
  */
 
 module wb_spi(
-	input               clk;
-	input               reset;
+	input               clk,
+	input               reset,
 	// Wishbone bus
-	input      [31:0]   wb_adr_i;
-	input      [31:0]   wb_dat_i;
-	output reg [31:0]   wb_dat_o;
-	input      [ 3:0]   wb_sel_i;
-	input               wb_cyc_i;
-	input               wb_stb_i;
-	output              wb_ack_o;
-	input               wb_we_i;
+	input      [15:0]   wb_adr_i,
+	input      [15:0]   wb_dat_i,
+	output reg [15:0]   wb_dat_o,
+	input      [ 3:0]   wb_sel_i,
+	input               wb_cyc_i,
+	input               wb_stb_i,
+	input               wb_we_i,
 	// SPI 
-	output              spi_sck;
-	output              spi_mosi;
-	input               spi_miso;
-	output reg   [7:0]  spi_cs;
+	output              spi_sck,
+	output              spi_mosi,
+	input               spi_miso,
+	output reg          spi_cs,
+	output reg          spi_rst
 );
 
 
-	reg  ack;
-	assign wb_ack_o = wb_stb_i & wb_cyc_i & ack;
+wire [15:0] rx_register;
+reg start;
+reg [15:0] divisor;
+wire busy;
 
-	wire wb_rd = wb_stb_i & wb_cyc_i & ~ack & ~wb_we_i;
-	wire wb_wr = wb_stb_i & wb_cyc_i & ~ack & wb_we_i;
 
-	
-	reg [2:0] bitcount;
-	reg ilatch;
-	reg run;
+spi spi0(
+  .clk(clk),
+  .rst(reset),
+	// SPI 
+  .spi_sck(spi_sck),
+  .spi_mosi(spi_mosi),
+  .spi_miso(spi_miso),
+  .busy(busy),
+	//Config Register
+ .start(start),
+ .divisor(divisor),
+ .rx_register({rx_register[7:0],rx_register[15:8]}),
+ .tx_register({wb_dat_i[7:0],wb_dat_i[15:8]})
+);
 
-	reg sck;
+	wire wb_rd = wb_stb_i & wb_cyc_i  & ~wb_we_i;
+	wire wb_wr = wb_stb_i & wb_cyc_i  & wb_we_i;
 
-	//prescaler registers for sclk
-	reg [7:0] prescaler;
-	reg [7:0] divisor;
-
-	//data shift register
-	reg [7:0] sreg;
-
-	assign spi_sck = sck;
-	assign spi_mosi = sreg[7];
-
-	always @(posedge clk) begin
+	always @(posedge clk or posedge reset) begin
 		if (reset == 1'b1) begin
-			ack      <= 0;
-			sck <= 1'b0;
-			bitcount <= 3'b000;
-			run <= 1'b0;
-			prescaler <= 8'h00;
-			divisor <= 8'hff;
+			start   <= 1'b0;
+			spi_cs  <= 1'b0; 
+			spi_rst <= 1'b0;
 		end else begin
-			prescaler <= prescaler + 1;
-			if (prescaler == divisor) begin
-				prescaler <= 8'h00;
-				if (run == 1'b1) begin
-					sck <= ~sck;
-					if(sck == 1'b1) begin
-						bitcount <= bitcount + 1;
-						if(bitcount == 3'b111) begin
-							run <= 1'b0;
-						end
-						
-						sreg [7:0] <= {sreg[6:0], ilatch};
-					end else begin
-						ilatch <= spi_miso;
-					end
-				end
-			end
-
-			ack <= wb_stb_i & wb_cyc_i;
-			
-			if (wb_rd) begin           // read cycle
-				case (wb_adr_i[5:2])
-					4'b0000: wb_dat_o <= sreg;
-					4'b0001: wb_dat_o <= {7'b0000000 , run};
+		start <= 1'b0;
+			if (wb_rd) begin
+			     // read cycle
+				case (wb_adr_i[3:0])
+					4'h0:
+				    wb_dat_o <= rx_register;
+				    
+				  4'h1:
+				    wb_dat_o <= {15'h0000,busy};
+				  
+				  4'h3:
+							wb_dat_o <= divisor;
+							
+					default:
+				    wb_dat_o <= 0;
 				endcase
-			end
-			
-			
+			end			
 			if (wb_wr) begin // write cycle
-				case (wb_adr_i[5:2])
-					4'b0000: begin
-							sreg    <=  wb_dat_i[7:0];
-							run     <=  1'b1;
-						end
-					4'b0010:
-							spi_cs  <=  wb_dat_i[7:0];
-					4'b0100: 
-							divisor <=  wb_dat_i[7:0];
+				case (wb_adr_i[3:0])
+					4'h0: begin //Load TX buffer into SPI
+							start <= 1'b1;
+					  end
+					4'h2:
+							spi_cs  <=  wb_dat_i[0];
+					4'h3:
+							divisor <=  wb_dat_i;
+				  4'h4:
+				      spi_rst <= wb_dat_i[0];
+					default: begin
+					    start <= 1'b0;
+					    spi_cs  <=   spi_cs;
+					    divisor <=   divisor;
+					    spi_rst <= spi_rst;
+				    end					    
 				endcase
 			end
 		end

@@ -1,3 +1,23 @@
+/*
+ * Copyright 2016 <Admobilize>
+ * MATRIX Labs  [http://creator.matrix.one]
+ * This file is part of MATRIX Creator HDL for Spartan 6
+ *
+ * MATRIX Creator HDL is like free software: you can redistribute 
+ * it and/or modify it under the terms of the GNU General Public License 
+ * as published by the Free Software Foundation, either version 3 of the 
+ * License, or (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+ * General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 `timescale 1ns / 1ps
 
   module system_TB;
@@ -11,24 +31,54 @@
        reg uart0_rx;
        reg uart1_rx;
        reg [7:0]pdm_data;
-
+       
        // Outputs
        wire miso;
        wire led;
-       wire uart0_tx;
-       wire uart1_tx;
+       wire [15:0] gpio_io;
        
+
+       wire nfc_sck;
+       reg nfc_miso;
 
   system uut(
        .clk_50(clk), .resetn(resetn), .mosi(mosi), .ss(ss), .sck(sck), 
-       .miso(miso), .uart0_tx(uart0_tx), .uart0_rx(uart0_rx), .pdm_data(pdm_data),
-       .uart1_tx(uart1_tx), .uart1_rx(uart1_rx)
+       .miso(miso), .pdm_data(pdm_data), .gpio_io(gpio_io), .nfc_miso(nfc_miso), .nfc_sck(nfc_sck)
+       
   );
 
   initial begin
     // Initialize Inputs
-    resetn = 0; clk = 0; mosi = 0; ss = 1; sck = 1; uart0_rx = 0;
+    resetn = 0; clk = 0; mosi = 0; ss = 1; sck = 1; uart0_rx = 0; nfc_miso = 0;
   end
+  
+//------------------------------------------
+//          TRI-STATE GENERATION
+//------------------------------------------
+parameter PERIOD_INPUT = 8000;
+parameter real DUTY_CYCLE_INPUT = 0.8;
+
+reg [15:0] data;
+reg [15:0] gpio_dir;
+
+genvar k;
+generate 
+  for (k=0;k<16;k=k+1)  begin: gpio_tris
+    assign gpio_io[k] = ~(gpio_dir[k]) ? data[k] : 1'bz;
+  end
+endgenerate
+
+initial    // Clock process for clk
+    begin
+        #OFFSET;
+        forever
+        begin
+            data = 16'h0000;
+            #(PERIOD_INPUT-(PERIOD_INPUT*DUTY_CYCLE_INPUT)) data = 16'hFFFF;
+            #(PERIOD_INPUT*DUTY_CYCLE_INPUT);
+        end
+    end
+
 
 //------------------------------------------
 //          RESET GENERATION
@@ -124,7 +174,7 @@ end
   ///////////////////
   // Send data
   ///////////////////
-    data_tx <= data;
+    data_tx <= {data[7:0],data[15:8]};
     repeat(2*TBIT) begin
       @(negedge clk);
     end
@@ -214,6 +264,31 @@ end
   endtask
 
 
+//------------------------------------------
+//          SPI NFC TRANSFER TASK
+//------------------------------------------
+  reg [5:0] n;
+  reg [15:0] data_nfc;
+
+  task automatic nfc_spi;
+    input [15:0] data;
+  begin
+    data_nfc = data;
+    nfc_miso <= data_nfc[14] ;
+
+  ///////////////////
+  // Send data
+  ///////////////////
+    for(n=0; n<14; n=n+1) begin
+      nfc_miso <= data_nfc[13-n];
+      repeat(TBIT) begin
+        @(negedge nfc_sck);
+      end
+    end
+   nfc_miso <= 0;
+    end
+  endtask
+
 
 //------------------------------------------
 //             TEST SINGLE SPI TRANSFER
@@ -221,24 +296,90 @@ end
 
   reg [4:0] j;
 initial begin: TEST_CASE 
-  #150 -> reset_trigger;
+  #250 -> reset_trigger;
   #0 pdm_data <= 7'hFF;
   @ (reset_done_trigger);
-  #1250000
+  #500
   
-  spi_burst_transfer(14'h1800, 5'h12, burst, read);
-  spi_transfer(14'h1801, 0 , single, read);
-  spi_transfer(14'h1802, 0 , single, read);
-  spi_transfer(14'h1803, 0 , single, read);
-  spi_transfer(14'h1804, 0 , single, read);
-  spi_transfer(14'h1805, 0 , single, read);
-  spi_transfer(14'h1806, 0 , single, read);
-  spi_transfer(14'h1807, 0 , single, read);
-  spi_transfer(14'h1800, 0 , single, read);
-  spi_transfer(14'h1800, 0 , single, read);
-  spi_transfer(14'h1800, 0 , single, read);
-  spi_transfer(14'h1800, 0 , single, read);
-  spi_transfer(14'h1800, 0 , single, read);
+  //spi_burst_transfer(14'h1800, 5'h12, burst, read);
+  gpio_dir <= 16'hFFF0;
+  spi_transfer(14'h3003, 16'h0050 , single, write);
+  spi_transfer(14'h3003, 0 , single, read);
+  spi_transfer(14'h3000, 16'hAAAA , single, write);
+  spi_transfer(14'h3001, 0 , single, read);
+  nfc_spi(16'h2AAA);
+  #1000
+  spi_transfer(14'h3000, 0 , single, read);
+//  spi_transfer(14'h3000, 16'h0000 , single, write);
+  spi_transfer(14'h2800, 16'hFFF0 , single, write);
+  spi_transfer(14'h2801, 16'h0000 , single, write);
+  
+
+  spi_transfer(14'h2803, {16'hFFFF} , single, write);
+  
+  spi_transfer(14'h2804, 16'h1111 , single, write);
+  
+  spi_transfer(14'h2805, 16'h0050 , single, write);
+  spi_transfer(14'h2806, 16'h0010 , single, write);
+  spi_transfer(14'h2807, 16'h0020 , single, write);
+  spi_transfer(14'h2808, 16'h0030 , single, write);
+  spi_transfer(14'h2809, 16'h0040 , single, write);
+  
+  spi_transfer(14'h280A, 16'h0030 , single, write);
+  spi_transfer(14'h280B, 16'h0020 , single, write);
+  spi_transfer(14'h280C, 16'h0020 , single, write);
+  spi_transfer(14'h280D, 16'h0020 , single, write);
+  spi_transfer(14'h280E, 16'h0020 , single, write);
+  
+  spi_transfer(14'h280F, 16'h0040 , single, write);
+  spi_transfer(14'h2810, 16'h0020 , single, write);
+  spi_transfer(14'h2811, 16'h0020 , single, write);
+  spi_transfer(14'h2812, 16'h0020 , single, write);
+  spi_transfer(14'h2813, 16'h0020 , single, write);
+  
+  spi_transfer(14'h2814, 16'h0050 , single, write);
+  spi_transfer(14'h2815, 16'h0030 , single, write);
+  spi_transfer(14'h2816, 16'h0030 , single, write);
+  spi_transfer(14'h2817, 16'h0030 , single, write);
+  spi_transfer(14'h2818, 16'h0030 , single, write);
+  
+  spi_transfer(14'h2819, 16'h0055 , single, write);
+  spi_transfer(14'h281A, 0 , single, read);
+  spi_transfer(14'h281B, 0 , single, read);
+  spi_transfer(14'h281C, 0 , single, read);
+  spi_transfer(14'h281D, 0 , single, read);
+  
+  spi_transfer(14'h2801, 0 , single, read);
+  /*
+  spi_transfer(14'h2803, 16'h0505 , single, write);
+  spi_transfer(14'h2804, 16'h0505 , single, write);
+  spi_transfer(14'h2805, 16'hFFFF , single, write);
+  spi_transfer(14'h2806, 16'hAADD , single, write);
+  spi_transfer(14'h2807, 16'hAADD , single, write);
+  spi_transfer(14'h2808, 16'hAADD , single, write);
+  
+  spi_transfer(14'h2803, 16'h0505 , single, write);
+  spi_transfer(14'h2804, 16'h0505 , single, write);
+  spi_transfer(14'h2805, 16'hFFCC , single, write);
+  spi_transfer(14'h2806, 16'hAADD , single, write);
+  spi_transfer(14'h2807, 16'hAADD , single, write);
+  spi_transfer(14'h2808, 16'hAADD , single, write);
+  
+  spi_transfer(14'h2803, 16'h0505 , single, write);
+  spi_transfer(14'h2804, 16'h0505 , single, write);
+  spi_transfer(14'h2805, 16'hFFCC , single, write);
+  spi_transfer(14'h2806, 16'hAADD , single, write);
+  spi_transfer(14'h2807, 16'hAADD , single, write);
+  spi_transfer(14'h2808, 16'hAADD , single, write);
+  */
+  spi_transfer(14'h0005, 0 , single, read);
+  spi_transfer(14'h0006, 0 , single, read);
+  spi_transfer(14'h0007, 0 , single, read);
+  spi_transfer(14'h0000, 0 , single, read);
+  spi_transfer(14'h0000, 0 , single, read);
+  spi_transfer(14'h0000, 0 , single, read);
+  spi_transfer(14'h0000, 0 , single, read);
+  spi_transfer(14'h0000, 0 , single, read);
   
   
   //spi_transfer(14'h0800, 4'h0003 , single, write);
@@ -300,8 +441,8 @@ end
 
    initial begin: TEST_DUMP
      $dumpfile("system_TB.vcd");
-     $dumpvars(-1, uut);
-     #((PERIOD*DUTY_CYCLE)*150000) $finish;
+     $dumpvars(-1, uut,nfc_miso,n );
+     #((PERIOD*DUTY_CYCLE)*15000) $finish;
    end
 
 endmodule

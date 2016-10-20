@@ -19,100 +19,88 @@
 
 module system 
 #(
-        parameter   bootram_file     = "rtl/wb_bram/image.ram",
-        parameter   everloop_file    = "rtl/wb_everloop/image.ram"
+  parameter   bootram_file     = "rtl/wb_bram/image.ram",
+  parameter   everloop_file    = "rtl/wb_everloop/image.ram",
+  parameter   GPIO_WIDTH       = 16
 
 )(
   input  clk_50,
   input  resetn,
 
-  // SPI interface
+  /* RASPBERRY's SPI interface */
   input  mosi,
   input  ss,
   input  sck,
   output miso,
-         
-  //Everloop     
+  
+  /* RASPBERRY's UART interface */
+  input       UART_RX_PI,     
+  output      UART_TX_PI,
+
+  /* NFC's SPI interface */
+  input  nfc_miso,
+  output nfc_mosi,
+  output nfc_cs,
+  output nfc_sck,
+  output nfc_rst,
+  input  nfc_irq,      
+  
+  /* Everloop */
   output everloop_ctl,
       
-  //MCU SAM
+  /* MCU SAM */
   input  mcu_nwe,
   input  mcu_ncs,
   input  mcu_nrd,
   input  [10:0] mcu_addr, //TODO(andres.calderon): parameterize
   inout  [7:0]  mcu_sram_data, //TODO(andres.calderon): parameterize
  
-  //IR      
+  /* IR */
   input  TX_PI,
   output TX_IR,
   output RX_PI,
   input  RX_IR,
   output IR_RING_EN,
-      
-  //GPIO    
-  inout [7:0] gpio_io,
-       
-  // Debug 
+  input  IR_RING_EN_PI,
+  output IRQ_NFC,
+
+  /* GPIO */
+  inout [GPIO_WIDTH-1:0] gpio_io,
+  
+  //EM358 
+  input       Z_RX,        
+  output      Z_TX,
+
+  
+  /* Debug */
   output  debug_led
 );
 
-
-
 //Set up IR
-assign IR_RING_EN = 1'b1;
-assign TX_IR = 1'b1;
-assign debug_led  = RX_IR;
+assign TX_IR = TX_PI;
+assign RX_PI = RX_IR;
+assign IR_RING_EN = IR_RING_EN_PI;
 
-// instanciar el modulo DCM_SP
+assign debug_led  = ~RX_IR;
+
+//Set up UART-EM3588
+assign Z_TX   = UART_RX_PI;
+assign UART_TX_PI = Z_RX;
+
+
 wire clk;
-wire clk_n;
+wire nclk;
+wire clk_25;
 
+creator_dcm dcm
+(
+  .clkin(clk_50),
 
-DCM_SP #(
-  .CLKDV_DIVIDE(2.0), // 1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5
-
-  .CLKFX_DIVIDE(1), // 1 to 32
-  .CLKFX_MULTIPLY(4), // 2 to 32
-
-  .CLKIN_DIVIDE_BY_2("FALSE"),
-  .CLKIN_PERIOD(20),
-  .CLKOUT_PHASE_SHIFT("NONE"),
-  .CLK_FEEDBACK("NONE"),
-  .DESKEW_ADJUST("SOURCE_SYNCHRONOUS"),
-  .DFS_FREQUENCY_MODE("LOW"),
-  .DLL_FREQUENCY_MODE("LOW"),
-  .DUTY_CYCLE_CORRECTION("TRUE"),
-  .PHASE_SHIFT(0),
-  .STARTUP_WAIT("TRUE")
-) clkgen_sys (
-  .CLK0(),//sys_clk_50Mhz
-  .CLK90(),
-  .CLK180(),
-  .CLK270(),
-
-  .CLK2X(),//ram_clk//sys_clk_100Mhz
-  .CLK2X180(),//ram_clk_n
-
-  .CLKDV(),
-  .CLKFX(sys_clk_dcm),
-  .CLKFX180(sys_clk_n_dcm),
-  .LOCKED(),
-  .CLKFB(),//sys_clk_fb//clk_50Mhz
-  .CLKIN(clk_50),
-  .RST(1'b0),
-  .PSEN(1'b0)
+  .clk_out_200(clk),
+  .nclk_out_200(nclk),
+  .clk_out_25()
 );
-
-
-BUFG b_sys_clk(
-  .I(sys_clk_dcm),
-  .O(clk)
-);
-
-BUFG b_sys_clk_n(
-  .I(sys_clk_n_dcm),
-  .O(clk_n)
-);
+    
 
 //------------------------------------------------------------------
 // Whishbone Wires
@@ -124,8 +112,9 @@ wire  [13:0] gnd14 = 14'h0000;
  
 wire [13:0]  spi0_adr,
              mcu_bram_adr,
+             uart0_adr,
+             uart1_adr,
              bram0_adr,
-             mic_array_adr,
              gpio0_adr,
              spi1_adr,
              everloop_adr;
@@ -135,6 +124,10 @@ wire [15:0]  spi0_dat_r,
              spi0_dat_w,
              mcu_bram_r,
              mcu_bram_w,
+             uart0_dat_r,
+             uart0_dat_w,
+             uart1_dat_r,
+             uart1_dat_w,
              bram0_dat_r,
              bram0_dat_w,
              gpio0_dat_r,
@@ -147,6 +140,8 @@ wire [15:0]  spi0_dat_r,
 
 wire [1:0]   spi0_sel,
              mcu_bram_sel,
+             uart0_sel,
+             uart1_sel,
              bram0_sel,
              gpio0_sel,
              spi1_sel,
@@ -154,6 +149,8 @@ wire [1:0]   spi0_sel,
 
 wire         spi0_we,
              mcu_bram_we,
+             uart0_we,
+             uart1_we,
              bram0_we,
              gpio0_we,
              spi1_we,
@@ -162,6 +159,8 @@ wire         spi0_we,
 
 wire         spi0_cyc,
              mcu_bram_cyc,
+             uart0_cyc,
+             uart1_cyc,
              bram0_cyc,
              gpio0_cyc,
              spi1_cyc,
@@ -170,6 +169,8 @@ wire         spi0_cyc,
 
 wire         spi0_stb,
              mcu_bram_stb,
+             uart0_stb,
+             uart1_stb,
              bram0_stb,
              gpio0_stb,
              spi1_stb,
@@ -182,6 +183,9 @@ wire         spi0_stb,
 conbus #(
   .s_addr_w(4),
   .s0_addr(4'b0000),  // bram          00 0000 0000 0000 0x0000
+  .s1_addr(4'b0010),  // uart0         00 1000 0000 0000 0x0800
+  .s2_addr(4'b0100),  // uart1         01 0000 0000 0000 0x1000
+  .s3_addr(4'b0110),  // mic_array     01 1000 0000 0000 0x1800
   .s4_addr(4'b1000),  // everloop0     10 0000 0000 0000 0x2000
   .s5_addr(4'b1010),  // gpio0         10 1000 0000 0000 0x2800
   .s6_addr(4'b1100),  // spi0          11 0000 0000 0000 0x3000
@@ -244,6 +248,33 @@ conbus #(
   .s0_cyc_o(bram0_cyc),
   .s0_stb_o(bram0_stb),
 
+  // Slave1
+  .s1_dat_i(uart0_dat_r),
+  .s1_dat_o(uart0_dat_w),
+  .s1_adr_o(uart0_adr),
+  .s1_sel_o(uart0_sel),
+  .s1_we_o(uart0_we),
+  .s1_cyc_o(uart0_cyc),
+  .s1_stb_o(uart0_stb),
+	
+  // Slave2
+  .s2_dat_i(uart1_dat_r),
+  .s2_dat_o(uart1_dat_w),
+  .s2_adr_o(uart1_adr),
+  .s2_sel_o(uart1_sel),
+  .s2_we_o(uart1_we),
+  .s2_cyc_o(uart1_cyc),
+  .s2_stb_o(uart1_stb),
+
+  // Slave3  mic_array
+  .s3_dat_i(),
+  .s3_dat_o(),
+  .s3_adr_o(),
+  .s3_sel_o(),
+  .s3_we_o(),
+  .s3_cyc_o(),
+  .s3_stb_o(),
+
   // Slave4  mic_array
   .s4_dat_i(everloop_dat_r),
   .s4_dat_o(everloop_dat_w),
@@ -269,7 +300,7 @@ conbus #(
   .s6_sel_o(spi1_sel),
   .s6_we_o(spi1_we),
   .s6_cyc_o(spi1_cyc),
-  .s6_stb_o(spi_stb),
+  .s6_stb_o(spi1_stb),
 
 
   // Slave7
@@ -284,7 +315,7 @@ conbus #(
 
 
 //---------------------------------------------------------------------------
-// SPI INTERFACE 
+// RASPBERRY's SPI INTERFACE 
 //---------------------------------------------------------------------------
 spi2ad_bus #(
   .ADDR_WIDTH(14),
@@ -327,7 +358,7 @@ wb_bram #(
 
 
 wb_mcu_bram mcu_bram0(
-  /*Wishbone interface*/
+  //Wishbone interface
   .clk_i(clk), 
   .wb_adr_i(mcu_bram_adr),
   .wb_dat_o(mcu_bram_r),
@@ -337,8 +368,8 @@ wb_mcu_bram mcu_bram0(
   .wb_cyc_i(mcu_bram_cyc),
   .wb_we_i(mcu_bram_we),
 
-  /*MCU SAM*/
-  .mcu_clk(clk),
+   //MCU SAM
+  .mcu_clk(nclk),
   .mcu_nwe(mcu_nwe),
   .mcu_ncs(mcu_ncs),
   .mcu_nrd(mcu_nrd),
@@ -374,10 +405,13 @@ wb_everloop#(
 //---------------------------------------------------------------------------
 // GPIO
 //---------------------------------------------------------------------------
-wb_gpio gpio0(
+
+wb_gpio#(
+  .GPIO_WIDTH(GPIO_WIDTH)
+) gpio0(
   
   .clk(clk),
-  .rst(rst),
+  .rst(resetn),
   
   .wb_stb_i(gpio0_stb),
   .wb_cyc_i(gpio0_cyc),
@@ -389,5 +423,25 @@ wb_gpio gpio0(
   .gpio_io(gpio_io)
 );
 
+//---------------------------------------------------------------------------
+// NFC's SPI interface
+//---------------------------------------------------------------------------
 
+assign IRQ_NFC = nfc_irq; 
+wb_spi spi1 (
+	.clk(      clk        ),
+	.reset(    resetn     ),
+	//
+	.wb_adr_i( spi1_adr   ),
+	.wb_dat_i( spi1_dat_w ),
+	.wb_dat_o( spi1_dat_r ),
+	.wb_stb_i( spi1_stb   ),
+	.wb_cyc_i( spi1_cyc   ),
+	.wb_we_i(  spi1_we    ),
+	.spi_sck(  nfc_sck    ),
+	.spi_mosi( nfc_mosi   ),
+	.spi_miso( nfc_miso   ),
+	.spi_cs(   nfc_cs     ),
+	.spi_rst(  nfc_rst    )
+);
 endmodule 
