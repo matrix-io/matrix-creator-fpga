@@ -21,18 +21,18 @@
 //-----------------------------------------------------------------
 
 module wb_bram #(
-  parameter mem_file_name = "none",
-  parameter adr_width = 10
+	parameter mem_file_name = "none",
+	parameter adr_width = 10
 ) (
-  input             clk_i, 
-  //
-  input             wb_stb_i,
-  input             wb_cyc_i,
-  input             wb_we_i,
-  input      [13:0] wb_adr_i,
-  output reg [15:0] wb_dat_o,
-  input      [15:0] wb_dat_i,
-  input      [ 1:0] wb_sel_i
+	input             clk_i, 
+	//
+	input             wb_stb_i,
+	input             wb_cyc_i,
+	input             wb_we_i,
+	input      [13:0] wb_adr_i,
+	output reg [15:0] wb_dat_o,
+	input      [15:0] wb_dat_i,
+	input      [ 1:0] wb_sel_i
 );
 
 //-----------------------------------------------------------------
@@ -60,10 +60,10 @@ end
 
 initial 
 begin
-  if (mem_file_name != "none")
-  begin
-  $readmemh(mem_file_name, ram);
-  end
+	if (mem_file_name != "none")
+	begin
+		$readmemh(mem_file_name, ram);
+	end
 end
 
 endmodule

@@ -17,6 +17,7 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 `timescale 1ns / 1ps
 module spi2ad_bus #(
        parameter ADDR_WIDTH = 16,
@@ -97,7 +98,7 @@ begin
   end else begin
     
     if(en_data_out_sr)begin 
-      data_out_sr <= data_bus_in;
+      data_out_sr <= {data_bus_in[7:0],data_bus_in[15:8]};
     end else begin
       data_out_sr <= data_out_sr;    
     end
@@ -139,8 +140,8 @@ begin
   end
 end
 
-
-assign data_bus_out  = data_in_latched;
+ 
+assign data_bus_out = data_in_latched;
 assign addr_bus = addr_bus_latched;
 
 wire en_data_in_latched ;
@@ -152,7 +153,7 @@ always @(posedge clk) begin
     data_in_latched <= {DATA_WIDTH{1'b0}};
   end else begin
     if(en_data_in_latched) begin
-      data_in_latched <= data_in_sr[15:0];
+      data_in_latched <= {data_in_sr[7:0],data_in_sr[15:8]};
     end else begin
       data_in_latched <= data_in_latched;
     end
