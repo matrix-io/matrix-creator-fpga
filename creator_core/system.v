@@ -203,17 +203,17 @@ wire          spi0_ack,
   conbus #(
     .ADDR_WIDTH(ADDR_WIDTH),
     .DATA_WIDTH(DATA_WIDTH),
-		.s_addr_w(3      ),
-		.s0_addr (3'b000), // bram          000 0000 0000 0000 0x0000
-		.s1_addr (3'b001), // uart0         001 0000 0000 0000 0x1000
-		.s2_addr (3'b010), // mic_array     010 0000 0000 0000 0x2000
-		.s3_addr (3'b011), // everloop0     011 0000 0000 0000 0x3000
-		.s4_addr (3'b100), // gpio0         100 0000 0000 0000 0x4000
-		.s5_addr (3'b101)  // mcu_bram      101 0000 0000 0000 0x5000
-	) conbus0 (
-		.sys_clk (clk            ),
-		.sys_rst (resetn         ),
-		// Master0 to the RPi
+    .s_addr_w  (3         ),
+    .s0_addr   (3'b000    ), // bram          000 0000 0000 0000 0x0000
+    .s1_addr   (3'b001    ), // uart0         001 0000 0000 0000 0x1000
+    .s2_addr   (3'b010    ), // mic_array     010 0000 0000 0000 0x2000
+    .s3_addr   (3'b011    ), // everloop0     011 0000 0000 0000 0x3000
+    .s4_addr   (3'b100    ), // gpio0         100 0000 0000 0000 0x4000
+    .s5_addr   (3'b101    )  // mcu_bram      101 0000 0000 0000 0x5000
+  ) conbus0 (
+    .sys_clk (clk            ),
+    .sys_rst (resetn         ),
+    // Master0 to the RPi
     .m0_dat_i(spi0_dat_r     ),
     .m0_dat_o(spi0_dat_w     ),
     .m0_adr_i(spi0_adr       ),
@@ -223,13 +223,13 @@ wire          spi0_ack,
     .m0_stb_i(spi0_stb       ),
     .m0_cti_i(3'b000         ),
     .m0_ack_o(spi0_ack       ),
-		// Master1
-		.m1_dat_i(gnd16          ),
-		.m1_adr_i(gnd15          ),
-		.m1_sel_i(gnd2           ),
-		.m1_cyc_i(gnd            ),
-		.m1_stb_i(gnd            ),
-		// Slave0  bram
+    // Master1
+    .m1_dat_i(gnd16          ),
+    .m1_adr_i(gnd15          ),
+    .m1_sel_i(gnd2           ),
+    .m1_cyc_i(gnd            ),
+    .m1_stb_i(gnd            ),
+    // Slave0  bram
     .s0_dat_i(bram0_dat_r    ),
     .s0_dat_o(bram0_dat_w    ),
     .s0_adr_o(bram0_adr      ),
@@ -238,16 +238,16 @@ wire          spi0_ack,
     .s0_cyc_o(bram0_cyc      ),
     .s0_stb_o(bram0_stb      ),
     .s0_ack_i(bram0_ack      ),
-		// Slave1
-		.s1_dat_i(uart0_dat_r    ),
-		.s1_dat_o(uart0_dat_w    ),
-		.s1_adr_o(uart0_adr      ),
-		.s1_sel_o(uart0_sel      ),
-		.s1_we_o (uart0_we       ),
-		.s1_cyc_o(uart0_cyc      ),
-		.s1_stb_o(uart0_stb      ),
-		.s1_ack_i(uart0_ack      ),
-		// Slave3  mic_array
+    // Slave1
+    .s1_dat_i(uart0_dat_r    ),
+    .s1_dat_o(uart0_dat_w    ),
+    .s1_adr_o(uart0_adr      ),
+    .s1_sel_o(uart0_sel      ),
+    .s1_we_o (uart0_we       ),
+    .s1_cyc_o(uart0_cyc      ),
+    .s1_stb_o(uart0_stb      ),
+    .s1_ack_i(uart0_ack      ),
+    // Slave3  mic_array
     .s2_dat_i(mic_array_dat_r),
     .s2_dat_o(mic_array_dat_w),
     .s2_adr_o(mic_array_adr  ),
@@ -256,7 +256,7 @@ wire          spi0_ack,
     .s2_cyc_o(mic_array_cyc  ),
     .s2_stb_o(mic_array_stb  ),
     .s2_ack_i(mic_array_ack  ),
-		// Slave3 Everloop
+    // Slave3 Everloop
     .s3_dat_i(everloop_dat_r ),
     .s3_dat_o(everloop_dat_w ),
     .s3_adr_o(everloop_adr   ),
@@ -265,175 +265,175 @@ wire          spi0_ack,
     .s3_cyc_o(everloop_cyc   ),
     .s3_stb_o(everloop_stb   ),
     .s3_ack_i(everloop_ack   ),
-		// Slave5
-		.s4_dat_i(gpio0_dat_r    ),
-		.s4_dat_o(gpio0_dat_w    ),
-		.s4_adr_o(gpio0_adr      ),
-		.s4_sel_o(gpio0_sel      ),
-		.s4_we_o (gpio0_we       ),
-		.s4_cyc_o(gpio0_cyc      ),
-		.s4_stb_o(gpio0_stb      ),
-		.s4_ack_i(gpio0_ack			 ),
-		// Slave7
-		.s5_dat_i(mcu_bram_r     ),
-		.s5_dat_o(mcu_bram_w     ),
-		.s5_adr_o(mcu_bram_adr   ),
-		.s5_sel_o(mcu_bram_sel   ),
-		.s5_we_o (mcu_bram_we    ),
-		.s5_cyc_o(mcu_bram_cyc   ),
-		.s5_stb_o(mcu_bram_stb   ),
-		.s5_ack_i(mcu_bram_ack   ),
-
-		.s6_ack_i(gnd            ),
+    // Slave5
+    .s4_dat_i(gpio0_dat_r    ),
+    .s4_dat_o(gpio0_dat_w    ),
+    .s4_adr_o(gpio0_adr      ),
+    .s4_sel_o(gpio0_sel      ),
+    .s4_we_o (gpio0_we       ),
+    .s4_cyc_o(gpio0_cyc      ),
+    .s4_stb_o(gpio0_stb      ),
+    .s4_ack_i(gpio0_ack      ),
+    // Slave7
+    .s5_dat_i(mcu_bram_r     ),
+    .s5_dat_o(mcu_bram_w     ),
+    .s5_adr_o(mcu_bram_adr   ),
+    .s5_sel_o(mcu_bram_sel   ),
+    .s5_we_o (mcu_bram_we    ),
+    .s5_cyc_o(mcu_bram_cyc   ),
+    .s5_stb_o(mcu_bram_stb   ),
+    .s5_ack_i(mcu_bram_ack   ),
+    
+    .s6_ack_i(gnd            ),
     .s6_dat_i(gnd16          ),
     
     .s7_ack_i(gnd            ),
     .s7_dat_i(gnd16          )
-	);
+  );
 
 //---------------------------------------------------------------------------
 // RASPBERRY's SPI INTERFACE
 //---------------------------------------------------------------------------
-   wb_spi_slave #(
-    .ADDR_WIDTH(ADDR_WIDTH),
-    .DATA_WIDTH(DATA_WIDTH)
-  ) spi0 (
-    .clk       (clk       ),
-    .resetn    (resetn    ),
-    
-    .mosi      (mosi  ),
-    .ss        (ss    ),
-    .sck       (sck   ),
-    .miso      (system_miso  ),
-    
-    .data_bus_r(spi0_dat_r),
-    .data_bus_w(spi0_dat_w),
-    .addr_bus  (spi0_adr  ),
-    .strobe    (spi0_stb  ),
-    .cycle     (spi0_cyc  ),
-    .wr        (spi0_we   ),
-    .ack       (spi0_ack  )
-  );
+wb_spi_slave #(
+  .ADDR_WIDTH(ADDR_WIDTH),
+  .DATA_WIDTH(DATA_WIDTH)
+) spi0 (
+  .clk       (clk        ),
+  .resetn    (resetn     ),
+  
+  .mosi      (mosi       ),
+  .ss        (ss         ),
+  .sck       (sck        ),
+  .miso      (system_miso),
+  
+  .data_bus_r(spi0_dat_r ),
+  .data_bus_w(spi0_dat_w ),
+  .addr_bus  (spi0_adr   ),
+  .strobe    (spi0_stb   ),
+  .cycle     (spi0_cyc   ),
+  .wr        (spi0_we    ),
+  .ack       (spi0_ack   )
+);
 
 //---------------------------------------------------------------------------
 // Block RAM
 //---------------------------------------------------------------------------
-  wire [DATA_WIDTH-1:0] mic_sample_rate     ;
-  wire [DATA_WIDTH-1:0] mic_data_gain       ;
+wire [DATA_WIDTH-1:0] mic_sample_rate;
+wire [DATA_WIDTH-1:0] mic_data_gain  ;
 
-  wb_bram #(
-    .ADDR_WIDTH       (ADDR_WIDTH       ),
-    .DATA_WIDTH       (DATA_WIDTH       ),
-    .VERSION          (VERSION          ),
-    .CLKFX_DIVIDE     (CLKFX_DIVIDE     ),
-    .CLKFX_MULTIPLY   (CLKFX_MULTIPLY   ),
-    .DECIMATION_RATIO (DECIMATION_RATIO ),
-    .DATA_GAIN_DEFAULT(DATA_GAIN_DEFAULT)
-  ) bram0 (
-    .clk                 (clk                 ),
-    .resetn              (resetn              ),
-    .wb_adr_i            (bram0_adr           ),
-    .wb_dat_o            (bram0_dat_r         ),
-    .wb_dat_i            (bram0_dat_w         ),
-    .wb_sel_i            (bram0_sel           ),
-    .wb_stb_i            (bram0_stb           ),
-    .wb_cyc_i            (bram0_cyc           ),
-    .wb_we_i             (bram0_we            ),
-    .wb_ack_o            (bram0_ack           )
-  );
+wb_bram #(
+  .ADDR_WIDTH       (ADDR_WIDTH       ),
+  .DATA_WIDTH       (DATA_WIDTH       ),
+  .VERSION          (VERSION          ),
+  .CLKFX_DIVIDE     (CLKFX_DIVIDE     ),
+  .CLKFX_MULTIPLY   (CLKFX_MULTIPLY   ),
+  .DECIMATION_RATIO (DECIMATION_RATIO ),
+  .DATA_GAIN_DEFAULT(DATA_GAIN_DEFAULT)
+) bram0 (
+  .clk     (clk        ),
+  .resetn  (resetn     ),
+  .wb_adr_i(bram0_adr  ),
+  .wb_dat_o(bram0_dat_r),
+  .wb_dat_i(bram0_dat_w),
+  .wb_sel_i(bram0_sel  ),
+  .wb_stb_i(bram0_stb  ),
+  .wb_cyc_i(bram0_cyc  ),
+  .wb_we_i (bram0_we   ),
+  .wb_ack_o(bram0_ack  )
+);
 //---------------------------------------------------------------------------
 // MCU BRAM
 //---------------------------------------------------------------------------
 
 wb_mcu_bram #(
-	.ADDR_WIDTH(ADDR_WIDTH),
-	.DATA_WIDTH(DATA_WIDTH)
+  .ADDR_WIDTH(ADDR_WIDTH),
+  .DATA_WIDTH(DATA_WIDTH)
 ) mcu_bram0 (
-	//Wishbone interface
-	.clk_i        (clk          ),
-	.wb_adr_i     (mcu_bram_adr ),
-	.wb_dat_o     (mcu_bram_r   ),
-	.wb_dat_i     (mcu_bram_w   ),
-	.wb_sel_i     (mcu_bram_sel ),
-	.wb_stb_i     (mcu_bram_stb ),
-	.wb_cyc_i     (mcu_bram_cyc ),
-	.wb_we_i      (mcu_bram_we  ),
-	
-	//MCU SAM
-	.mcu_clk      (nclk         ),
-	.mcu_nwe      (mcu_nwe      ),
-	.mcu_ncs      (mcu_ncs      ),
-	.mcu_nrd      (mcu_nrd      ),
-	.mcu_addr     (mcu_addr     ),
-	.mcu_sram_data(mcu_sram_data),
-	.wb_ack_o     (mcu_bram_ack )
+  //Wishbone interface
+  .clk_i        (clk          ),
+  .wb_adr_i     (mcu_bram_adr ),
+  .wb_dat_o     (mcu_bram_r   ),
+  .wb_dat_i     (mcu_bram_w   ),
+  .wb_sel_i     (mcu_bram_sel ),
+  .wb_stb_i     (mcu_bram_stb ),
+  .wb_cyc_i     (mcu_bram_cyc ),
+  .wb_we_i      (mcu_bram_we  ),
+  
+  //MCU SAM
+  .mcu_clk      (nclk         ),
+  .mcu_nwe      (mcu_nwe      ),
+  .mcu_ncs      (mcu_ncs      ),
+  .mcu_nrd      (mcu_nrd      ),
+  .mcu_addr     (mcu_addr     ),
+  .mcu_sram_data(mcu_sram_data),
+  .wb_ack_o     (mcu_bram_ack )
 );
 
 //---------------------------------------------------------------------------
 // Everloop
 //---------------------------------------------------------------------------
-  wb_everloop #(
-    .MEM_FILE_NAME(EVERLOOP_FILE),
-    .SYS_FREQ_HZ  (SYS_FREQ_HZ  ),
-    .ADDR_WIDTH   (ADDR_WIDTH   ),
-    .DATA_WIDTH   (DATA_WIDTH   )
-  ) everloop0 (
-    .clk         (clk           ),
-    .resetn      (resetn        ),
-    // Wishbone interface
-    .wb_stb_i    (everloop_stb  ),
-    .wb_cyc_i    (everloop_cyc  ),
-    .wb_we_i     (everloop_we   ),
-    .wb_adr_i    (everloop_adr  ),
-    .wb_sel_i    (everloop_sel  ),
-    .wb_dat_i    (everloop_dat_w),
-    .wb_dat_o    (everloop_dat_r),
-    .everloop_ctl(everloop_ctl  ),
-    .wb_ack_o    (everloop_ack  )
-  );
+wb_everloop #(
+  .MEM_FILE_NAME(EVERLOOP_FILE),
+  .SYS_FREQ_HZ  (SYS_FREQ_HZ  ),
+  .ADDR_WIDTH   (ADDR_WIDTH   ),
+  .DATA_WIDTH   (DATA_WIDTH   )
+) everloop0 (
+  .clk         (clk           ),
+  .resetn      (resetn        ),
+  // Wishbone interface
+  .wb_stb_i    (everloop_stb  ),
+  .wb_cyc_i    (everloop_cyc  ),
+  .wb_we_i     (everloop_we   ),
+  .wb_adr_i    (everloop_adr  ),
+  .wb_sel_i    (everloop_sel  ),
+  .wb_dat_i    (everloop_dat_w),
+  .wb_dat_o    (everloop_dat_r),
+  .everloop_ctl(everloop_ctl  ),
+  .wb_ack_o    (everloop_ack  )
+);
 
 //---------------------------------------------------------------------------
 // GPIO
 //---------------------------------------------------------------------------
 wb_gpio #(
-	.ADDR_WIDTH(ADDR_WIDTH),
-	.DATA_WIDTH(DATA_WIDTH),
-	.GPIO_WIDTH(GPIO_WIDTH)
+  .ADDR_WIDTH(ADDR_WIDTH),
+  .DATA_WIDTH(DATA_WIDTH),
+  .GPIO_WIDTH(GPIO_WIDTH)
 ) gpio0 (
-	.clk     (clk        ),
-	.rst     (resetn     ),
-	.wb_stb_i(gpio0_stb  ),
-	.wb_cyc_i(gpio0_cyc  ),
-	.wb_we_i (gpio0_we   ),
-	.wb_adr_i(gpio0_adr  ),
-	.wb_dat_i(gpio0_dat_w),
-	.wb_dat_o(gpio0_dat_r),
-	.gpio_io (gpio_io    ),
-	.wb_ack_o(gpio0_ack  )
+  .clk     (clk        ),
+  .rst     (resetn     ),
+  .wb_stb_i(gpio0_stb  ),
+  .wb_cyc_i(gpio0_cyc  ),
+  .wb_we_i (gpio0_we   ),
+  .wb_adr_i(gpio0_adr  ),
+  .wb_dat_i(gpio0_dat_w),
+  .wb_dat_o(gpio0_dat_r),
+  .gpio_io (gpio_io    ),
+  .wb_ack_o(gpio0_ack  )
 );
 //---------------------------------------------------------------------------
 // Zwave UART SPI interface
 //---------------------------------------------------------------------------
 wb_uart #(
-	.ADDR_WIDTH (ADDR_WIDTH ),
-	.DATA_WIDTH (DATA_WIDTH ),
-	.SYS_FREQ_HZ(SYS_FREQ_HZ),
-	.BAUD_RATE  (115200     )
+  .ADDR_WIDTH (ADDR_WIDTH ),
+  .DATA_WIDTH (DATA_WIDTH ),
+  .SYS_FREQ_HZ(SYS_FREQ_HZ),
+  .BAUD_RATE  (115200     )
 ) uart0 (
-	.clk     (clk        ),
-	.resetn  (resetn     ),
-	// Wishbone interface
-	.wb_stb_i(uart0_stb  ),
-	.wb_cyc_i(uart0_cyc  ),
-	.wb_we_i (uart0_we   ),
-	.wb_adr_i(uart0_adr  ),
-	.wb_dat_i(uart0_dat_w),
-	.wb_dat_o(uart0_dat_r),
-	.wb_ack_o(uart0_ack  ),
-	// Serial Wires
-	.uart_rxd(zwave_rxd  ),
-	.uart_txd(zwave_txd  ),
-	.uart_irq(uart_irq   )
+  .clk     (clk        ),
+  .resetn  (resetn     ),
+  // Wishbone interface
+  .wb_stb_i(uart0_stb  ),
+  .wb_cyc_i(uart0_cyc  ),
+  .wb_we_i (uart0_we   ),
+  .wb_adr_i(uart0_adr  ),
+  .wb_dat_i(uart0_dat_w),
+  .wb_dat_o(uart0_dat_r),
+  .wb_ack_o(uart0_ack  ),
+  // Serial Wires
+  .uart_rxd(zwave_rxd  ),
+  .uart_txd(zwave_txd  ),
+  .uart_irq(uart_irq   )
 );
 
 endmodule
