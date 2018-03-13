@@ -11,12 +11,16 @@ IVERILOG        = iverilog
 
 MCU_SRC         = rtl/wb_mcu_bram/wb_mcu_bram.v
 
+UART_SRC        = rtl/wb_uart/uart.v \
+                  rtl/wb_uart/wb_uart.v \
+                  rtl/wb_uart/uart_fifo.v
+
 EVERLOOP_SRC    = rtl/wb_everloop/everloop_bram.v \
                   rtl/wb_everloop/everloop.v \
                   rtl/wb_everloop/wb_everloop.v
 
-SPI_SRC         = rtl/wb_spi/wb_spi.v \
-                  rtl/wb_spi/spi.v
+SPI_SRC         = rtl/wb_spi_slave/wb_spi_slave.v \
+                  rtl/wb_spi_slave/spi_slave.v \
 
 GPIO_SRC        = rtl/wb_gpio/wb_gpio.v \
                   rtl/wb_gpio/pwm.v \
@@ -28,13 +32,11 @@ GPIO_SRC        = rtl/wb_gpio/wb_gpio.v \
 
 SRC             = $(DESIGN).v \
                   creator_dcm.v \
-                  rtl/wb_spi_berry/spi2ad_bus_sync.v \
                   rtl/wb_bram/bram.v \
                   rtl/wb_conbus/conbus_arb.v \
                   rtl/wb_conbus/conbus.v \
                   $(MCU_SRC) \
                   $(SPI_SRC) \
-                  $(MIC_SRC) \
                   $(UART_SRC) \
                   $(GPIO_SRC) \
                   $(EVERLOOP_SRC)

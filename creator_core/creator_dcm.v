@@ -17,31 +17,35 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-module creator_dcm
- (// Clock in ports
-  input         clkin,
+module creator_dcm #(
+  parameter CLKFX_DIVIDE   = 1,
+  parameter CLKFX_MULTIPLY = 4
+  ) (
+  // Clock in ports
+  input  clkin       ,
   // Clock out ports
-  output        clk_out_200,
-  output        nclk_out_200,
-  output        clk_out_25
- );
+  output clk_out_200 ,
+  output nclk_out_200,
+  output clk_out_25
+);
 
-IBUFG clkin_buf
-   (.O (b_clkin),
-  .I (clkin));
+  IBUFG clkin_buf (
+    .O(b_clkin),
+    .I(clkin  )
+  );
 
-wire        locked_int;
-wire [7:0]  status_int;
-wire clkfb;
-wire clk0;
-wire clkfx;
-wire nclkfx;
-wire clkdv;
+  wire       locked_int;
+  wire [7:0] status_int;
+  wire       clkfb     ;
+  wire       clk0      ;
+  wire       clkfx     ;
+  wire       nclkfx    ;
+  wire       clkdv     ;
 
 DCM_SP
 #(.CLKDV_DIVIDE          (2.000),
-  .CLKFX_DIVIDE          (1),
-  .CLKFX_MULTIPLY        (4),
+  .CLKFX_DIVIDE          (CLKFX_DIVIDE),
+  .CLKFX_MULTIPLY        (CLKFX_MULTIPLY),
   .CLKIN_DIVIDE_BY_2     ("FALSE"),
   .CLKIN_PERIOD          (20.000),
   .CLKOUT_PHASE_SHIFT    ("NONE"),
@@ -49,9 +53,8 @@ DCM_SP
   .DESKEW_ADJUST         ("SYSTEM_SYNCHRONOUS"),
   .PHASE_SHIFT           (0),
   .STARTUP_WAIT          ("FALSE"))
-dcm_sp_inst
-    // Input clock
-   (.CLKIN                 (b_clkin),
+dcm_sp_inst (
+  .CLKIN                 (b_clkin),
   .CLKFB                 (clkfb),
     // Output clocks
   .CLK0                  (clk0),
@@ -73,7 +76,8 @@ dcm_sp_inst
   .STATUS                (status_int),
   .RST                   (1'b0),
     // Unused pin- tie low
-  .DSSEN                 (1'b0));
+  .DSSEN                 (1'b0)
+  );
 
 
   BUFG clkf_buf

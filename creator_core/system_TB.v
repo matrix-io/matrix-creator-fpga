@@ -1,55 +1,80 @@
-/*
- * Copyright 2016 <Admobilize>
- * MATRIX Labs  [http://creator.matrix.one]
- * This file is part of MATRIX Creator HDL for Spartan 6
- *
- * MATRIX Creator HDL is like free software: you can redistribute 
- * it and/or modify it under the terms of the GNU General Public License 
- * as published by the Free Software Foundation, either version 3 of the 
- * License, or (at your option) any later version.
-
- * This program is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
- * General Public License for more details.
-
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-
 `timescale 1ns / 1ps
 
-  module system_TB;
+module nfc_spi (
+  input      [7:0] data_nfc,
+  input            nfc_sck ,
+  output reg       nfc_miso
+);
 
-       // Inputs
-       reg clk;
-       reg resetn;
-       reg mosi;
-       reg ss;
-       reg sck;
-       reg uart0_rx;
-       reg uart1_rx;
-       reg [7:0]pdm_data;
-       
-       // Outputs
-       wire miso;
-       wire led;
-       wire [15:0] gpio_io;
-       
+  parameter TBIT = 1;
+  initial begin
+    nfc_miso = 0;
+  end
 
-       wire nfc_sck;
-       reg nfc_miso;
+  reg [5:0] n;
 
-  system uut(
-       .clk_50(clk), .resetn(resetn), .mosi(mosi), .ss(ss), .sck(sck), 
-       .miso(miso), .pdm_data(pdm_data), .gpio_io(gpio_io), .nfc_miso(nfc_miso), .nfc_sck(nfc_sck)
-       
+  always @(*) begin
+    for(n=0; n<8; n=n+1) begin
+      nfc_miso <= data_nfc[7-n];
+      repeat(TBIT) begin
+        @(negedge nfc_sck);
+      end
+    end
+    nfc_miso <= 0;
+
+  end
+
+endmodule
+
+module system_TB;
+
+  // Inputs
+  reg clk;
+  reg clk_esp;
+  reg resetn;
+  reg rpi_mosi;
+  reg rpi_ss;
+  reg rpi_sck;
+  reg esp_mosi;
+  reg esp_ss;
+  reg esp_sck;
+  reg ss1;
+  reg       uart0_rx;
+  reg [7:0] pdm_data;
+  reg       uart_rxd;
+
+  // Outputs
+  wire        miso   ;
+  wire [15:0] gpio_io;
+
+
+  wire nfc_sck ;
+  wire nfc_miso;
+
+  system uut (
+    .clk_50  (clk     ),
+    .resetn  (resetn  ),
+    .mosi    (rpi_mosi    ),
+    .ss      (rpi_ss      ),
+    .ss1     (ss1     ),
+    .sck     (rpi_sck     ),
+    .miso    (rpi_miso    ),
+    .pdm_data(pdm_data),
+    .nfc_miso(nfc_miso),
+    .nfc_sck (nfc_sck ),
+    .gpio_io (gpio_io ),
+    .zwave_rxd (uart_rxd)
+  );
+
+  nfc_spi nfc (
+    .data_nfc(8'hAA   ),
+    .nfc_sck (nfc_sck ),
+    .nfc_miso(nfc_miso)
   );
 
   initial begin
     // Initialize Inputs
-    resetn = 0; clk = 0; mosi = 0; ss = 1; sck = 1; uart0_rx = 0; nfc_miso = 0;
+    resetn = 0; clk = 0; rpi_mosi = 0; rpi_ss = 1; rpi_sck = 1; uart0_rx = 0; ss1 = 1;
   end
   
 //------------------------------------------
@@ -103,7 +128,7 @@ end
 //          CLOCK GENERATION
 //------------------------------------------
 
-    parameter TBIT   = 1;
+    parameter TBIT   = 2;
     parameter PERIOD = 20;
     parameter real DUTY_CYCLE = 0.5;
     parameter OFFSET = 0;
@@ -134,26 +159,37 @@ end
         end
     end
 
+    initial    // Clock process for clk
+    begin
+        #OFFSET;
+        forever
+        begin
+            clk_esp = 1'b0;
+            #(PERIOD-(PERIOD*DUTY_CYCLE)) clk_esp = 1'b1;
+            #(PERIOD*DUTY_CYCLE);
+        end
+    end
 
 
 //------------------------------------------
 //          SPI SINGLE TRANSFER TASK
 //------------------------------------------
   reg [4:0] i;
-  reg [15:0] data_tx;
+  reg [15:0] data_tx_rpi;
+  reg [15:0] data_tx_e_rpi;
 
-  task automatic spi_transfer;
-    input [13:0] address;
+  task automatic spi_transfer_pi;
+    input [14:0] address;
     input [15:0] data;
-    input autoinc;
     input RnW;
   begin
-    data_tx = {address, autoinc, RnW};
-    ss = 1;
+    data_tx_e_rpi = {address,RnW};
+    data_tx_rpi = {data_tx_e_rpi[7:0],data_tx_e_rpi[15:8]};
+    rpi_ss = 1;
     repeat(4*TBIT) begin
       @(negedge clk);
     end
-    ss = 0; 
+    rpi_ss = 0; 
     repeat(2*TBIT) begin
       @(negedge clk);
     end
@@ -161,12 +197,12 @@ end
   // Send address 
   ///////////////////
     for(i=0; i<16; i=i+1) begin
-      sck = 0;
-      mosi <= data_tx[15-i];
+      rpi_sck = 0;
+      rpi_mosi <= data_tx_rpi[15-i];
       repeat(TBIT) begin
         @(negedge clk);
       end
-      sck = 1;	
+      rpi_sck = 1;  
       repeat(TBIT) begin
         @(negedge clk);
       end
@@ -174,30 +210,104 @@ end
   ///////////////////
   // Send data
   ///////////////////
-    data_tx <= {data[7:0],data[15:8]};
+    data_tx_rpi <= {data[7:0],data[15:8]};
     repeat(2*TBIT) begin
       @(negedge clk);
     end
     for(i=0; i<16; i=i+1) begin
-      sck = 0;
-      mosi <= data_tx[15-i];
+      rpi_sck = 0;
+      rpi_mosi <= data_tx_rpi[15-i];
       repeat(TBIT) begin
         @(negedge clk);
       end
-      sck = 1;	
+      rpi_sck = 1;  
       repeat(TBIT) begin
         @(negedge clk);
       end
     end
     repeat(4*TBIT) begin
       @(negedge clk);
-    end		
-    ss = 1;
+    end   
+    rpi_ss = 1;
     repeat(4*TBIT) begin
       @(negedge clk);
     end
   end
   endtask
+
+  reg [4:0] j;
+  reg [15:0] data_tx_esp;
+  reg [15:0] data_tx_e_esp;
+
+  task automatic spi_transfer_esp;
+    input [14:0] address_esp;
+    input [15:0] data_esp;
+    input RnW_esp;
+  begin
+    data_tx_e_esp = {address_esp,RnW_esp};
+    data_tx_esp = {data_tx_e_esp[7:0],data_tx_e_esp[15:8]};
+    esp_ss = 1;
+    repeat(4*TBIT) begin
+      @(negedge clk_esp);
+    end
+    esp_ss = 0; 
+    repeat(2*TBIT) begin
+      @(negedge clk_esp);
+    end
+  ///////////////////
+  // Send address 
+  ///////////////////
+    for(j=0; j<16; j=j+1) begin
+      esp_sck = 0;
+      esp_mosi <= data_tx_esp[15-j];
+      repeat(TBIT) begin
+        @(negedge clk_esp);
+      end
+      esp_sck = 1;  
+      repeat(TBIT) begin
+        @(negedge clk_esp);
+      end
+    end
+  ///////////////////
+  // Send data
+  ///////////////////
+    data_tx_esp <= {data_esp[7:0],data_esp[15:8]};
+    repeat(2*TBIT) begin
+      @(negedge clk_esp);
+    end
+    for(j=0; j<16; j=j+1) begin
+      esp_sck = 0;
+      esp_mosi <= data_tx_esp[15-j];
+      repeat(TBIT) begin
+        @(negedge clk_esp);
+      end
+      esp_sck = 1;  
+      repeat(TBIT) begin
+        @(negedge clk_esp);
+      end
+    end
+    repeat(4*TBIT) begin
+      @(negedge clk_esp);
+    end   
+    esp_ss = 1;
+    repeat(4*TBIT) begin
+      @(negedge clk_esp);
+    end
+  end
+  endtask
+
+parameter depth = (1 << 8);
+// actual ram cells
+reg [15:0] ram [0:depth-1];
+localparam MEM_FILE_NAME = "sine";
+
+initial 
+begin
+  if (MEM_FILE_NAME != "none")
+  begin
+    $readmemh(MEM_FILE_NAME, ram);
+  end
+end
 
 //------------------------------------------
 //          SPI BURST TRANSFER TASK
@@ -205,38 +315,39 @@ end
   reg [4:0] ib;
   reg [4:0] jb;
   reg [15:0] data_txb[18:0];
+  reg [15:0] data_txb_e;
+  
   task automatic spi_burst_transfer;
-    input [13:0] address_b;
+    input [15:0] address_b;
     input [4:0] count;
-    input autoinc_b;
     input RnW_b;
   begin
+    data_txb_e = {address_b,RnW_b};
+    data_txb[0] = {data_txb_e[7:0],data_txb_e[15:8]};
+    data_txb[1] = ram[0];
+    data_txb[2] = ram[1];
+    data_txb[3] = ram[2];
+    data_txb[4] = ram[3];
+    data_txb[5] = ram[4];
+    data_txb[6] = ram[5];
+    data_txb[7] = ram[6];
+    data_txb[8] = ram[7];
+    data_txb[9] = ram[8];
+    data_txb[10] = ram[9];
+    data_txb[11] = ram[10];
+    data_txb[12] = ram[11];
+    data_txb[13] = ram[12];
+    data_txb[14] = ram[13];
+    data_txb[15] = ram[14];
+    data_txb[16] = ram[15];
+    data_txb[17] = ram[16];
+    data_txb[18] = ram[17];
 
-    data_txb[0] = {address_b, autoinc_b, RnW_b};
-    data_txb[1] = 1;
-    data_txb[2] = 2;
-    data_txb[3] = 3;
-    data_txb[4] = 4;
-    data_txb[5] = 5;
-    data_txb[6] = 6;
-    data_txb[7] = 7;
-    data_txb[8] = 8;
-    data_txb[9] = 9;
-    data_txb[10] = 10;
-    data_txb[11] = 11;
-    data_txb[12] = 12;
-    data_txb[13] = 13;
-    data_txb[14] = 14;
-    data_txb[15] = 15;
-    data_txb[16] = 16;
-    data_txb[17] = 17;
-    data_txb[18] = 18;
-
-    ss = 1;
+    rpi_ss = 1;
     repeat(20*TBIT) begin
       @(negedge clk);
     end
-    ss = 0; 
+    rpi_ss = 0; 
     repeat(2*TBIT) begin
       @(negedge clk);
     end
@@ -245,18 +356,18 @@ end
         @(negedge clk);
       end
       for(ib = 0; ib < 16; ib = ib + 1) begin
-        sck = 0;
-        mosi <= data_txb[jb][15-ib];
+        rpi_sck = 0;
+        rpi_mosi <= data_txb[jb][15-ib];
         repeat(TBIT) begin
           @(negedge clk);
         end
-        sck = 1;	
+        rpi_sck = 1;  
         repeat(TBIT) begin
           @(negedge clk);
         end
       end
     end
-    ss = 1;
+    rpi_ss = 1;
     repeat(4*TBIT) begin
       @(negedge clk);
     end
@@ -267,182 +378,78 @@ end
 //------------------------------------------
 //          SPI NFC TRANSFER TASK
 //------------------------------------------
-  reg [5:0] n;
-  reg [15:0] data_nfc;
+/*  reg [ 5:0] n       ;
+  reg [7:0] data_nfc;
 
   task automatic nfc_spi;
-    input [15:0] data;
+  input [7:0] data;
   begin
-    data_nfc = data;
-    nfc_miso <= data_nfc[14] ;
+  data_nfc = data;
+  for(n=0; n<8; n=n+1) begin
+  nfc_miso <= data_nfc[7-n];
+  repeat(TBIT) begin
+  @(negedge nfc_sck);
+  end
+  end
+  nfc_miso <= 0;
+  end
+  endtask
+*/
+//------------------------------------------
+//          UART TRANSFER TASK
+//------------------------------------------
+  reg [3:0] u           ;
+  reg [7:0] data_uart_rx;
 
-  ///////////////////
-  // Send data
-  ///////////////////
-    for(n=0; n<14; n=n+1) begin
-      nfc_miso <= data_nfc[13-n];
-      repeat(TBIT) begin
-        @(negedge nfc_sck);
+  parameter UART_BIT = 432; //Bit time
+
+  task automatic uart_rx;
+    input [9:0] data;
+    begin
+      data_uart_rx = data;
+      uart_rxd <= 0;
+
+      repeat(UART_BIT) begin
+        @(negedge clk);
       end
-    end
-   nfc_miso <= 0;
+
+      for(u=0; u<8; u=u+1)
+        begin
+          uart_rxd <= data_uart_rx[u];
+          repeat(UART_BIT) begin
+            @(negedge clk);
+          end
+        end
+      uart_rxd <= 1;
     end
   endtask
-
 
 //------------------------------------------
 //             TEST SINGLE SPI TRANSFER
 //------------------------------------------
+  initial begin: TEST_CASE
+    #250 -> reset_trigger;
+    uart_rxd <= 1;
+    #0 pdm_data <= 8'hAA;
+    @ (reset_done_trigger);
+    spi_transfer_pi(15'h4000, 0, write);
+    spi_burst_transfer(15'h4000, 5'h12, write);
+    uart_rx(9'hAA);
+    #50000
+    uart_rx(9'hAB);
+    #50000
+    uart_rx(9'hAC);
+    #30000
+    spi_transfer_pi(15'h1000, 0, read);
+    spi_transfer_pi(15'h1000, 0, read);
 
-  reg [4:0] j;
-initial begin: TEST_CASE 
-  #250 -> reset_trigger;
-  #0 pdm_data <= 7'hFF;
-  @ (reset_done_trigger);
-  #500
-  
-  //spi_burst_transfer(14'h1800, 5'h12, burst, read);
-  gpio_dir <= 16'hFFF0;
-  spi_transfer(14'h3003, 16'h0050 , single, write);
-  spi_transfer(14'h3003, 0 , single, read);
-  spi_transfer(14'h3000, 16'hAAAA , single, write);
-  spi_transfer(14'h3001, 0 , single, read);
-  nfc_spi(16'h2AAA);
-  #1000
-  spi_transfer(14'h3000, 0 , single, read);
-//  spi_transfer(14'h3000, 16'h0000 , single, write);
-  spi_transfer(14'h2800, 16'hFFF0 , single, write);
-  spi_transfer(14'h2801, 16'h0000 , single, write);
-  
+  end
 
-  spi_transfer(14'h2803, {16'hFFFF} , single, write);
-  
-  spi_transfer(14'h2804, 16'h1111 , single, write);
-  
-  spi_transfer(14'h2805, 16'h0050 , single, write);
-  spi_transfer(14'h2806, 16'h0010 , single, write);
-  spi_transfer(14'h2807, 16'h0020 , single, write);
-  spi_transfer(14'h2808, 16'h0030 , single, write);
-  spi_transfer(14'h2809, 16'h0040 , single, write);
-  
-  spi_transfer(14'h280A, 16'h0030 , single, write);
-  spi_transfer(14'h280B, 16'h0020 , single, write);
-  spi_transfer(14'h280C, 16'h0020 , single, write);
-  spi_transfer(14'h280D, 16'h0020 , single, write);
-  spi_transfer(14'h280E, 16'h0020 , single, write);
-  
-  spi_transfer(14'h280F, 16'h0040 , single, write);
-  spi_transfer(14'h2810, 16'h0020 , single, write);
-  spi_transfer(14'h2811, 16'h0020 , single, write);
-  spi_transfer(14'h2812, 16'h0020 , single, write);
-  spi_transfer(14'h2813, 16'h0020 , single, write);
-  
-  spi_transfer(14'h2814, 16'h0050 , single, write);
-  spi_transfer(14'h2815, 16'h0030 , single, write);
-  spi_transfer(14'h2816, 16'h0030 , single, write);
-  spi_transfer(14'h2817, 16'h0030 , single, write);
-  spi_transfer(14'h2818, 16'h0030 , single, write);
-  
-  spi_transfer(14'h2819, 16'h0055 , single, write);
-  spi_transfer(14'h281A, 0 , single, read);
-  spi_transfer(14'h281B, 0 , single, read);
-  spi_transfer(14'h281C, 0 , single, read);
-  spi_transfer(14'h281D, 0 , single, read);
-  
-  spi_transfer(14'h2801, 0 , single, read);
-  /*
-  spi_transfer(14'h2803, 16'h0505 , single, write);
-  spi_transfer(14'h2804, 16'h0505 , single, write);
-  spi_transfer(14'h2805, 16'hFFFF , single, write);
-  spi_transfer(14'h2806, 16'hAADD , single, write);
-  spi_transfer(14'h2807, 16'hAADD , single, write);
-  spi_transfer(14'h2808, 16'hAADD , single, write);
-  
-  spi_transfer(14'h2803, 16'h0505 , single, write);
-  spi_transfer(14'h2804, 16'h0505 , single, write);
-  spi_transfer(14'h2805, 16'hFFCC , single, write);
-  spi_transfer(14'h2806, 16'hAADD , single, write);
-  spi_transfer(14'h2807, 16'hAADD , single, write);
-  spi_transfer(14'h2808, 16'hAADD , single, write);
-  
-  spi_transfer(14'h2803, 16'h0505 , single, write);
-  spi_transfer(14'h2804, 16'h0505 , single, write);
-  spi_transfer(14'h2805, 16'hFFCC , single, write);
-  spi_transfer(14'h2806, 16'hAADD , single, write);
-  spi_transfer(14'h2807, 16'hAADD , single, write);
-  spi_transfer(14'h2808, 16'hAADD , single, write);
-  */
-  spi_transfer(14'h0005, 0 , single, read);
-  spi_transfer(14'h0006, 0 , single, read);
-  spi_transfer(14'h0007, 0 , single, read);
-  spi_transfer(14'h0000, 0 , single, read);
-  spi_transfer(14'h0000, 0 , single, read);
-  spi_transfer(14'h0000, 0 , single, read);
-  spi_transfer(14'h0000, 0 , single, read);
-  spi_transfer(14'h0000, 0 , single, read);
-  
-  
-  //spi_transfer(14'h0800, 4'h0003 , single, write);
-  //spi_transfer(14'h1000, 4'h0003 , single, write);
-  //spi_transfer(14'h1800, 4'h0003 , single, write);
-  //spi_transfer(14'h2000, 4'h0003 , single, write);
-  //spi_transfer(14'h2800, 4'h0003 , single, write);
-  //spi_transfer(14'h3000, 4'h0003 , single, write);
-  
-  //pdm_data <= 8'hFE; 
-  //spi_burst_transfer(14'h1000, 5'h12, burst, read);
-  //spi_transfer(14'h080C, 4'h0083 , single, write);
-  //spi_transfer(14'h0800, 4'h0003 , single, write);
-  //spi_transfer(14'h0804, 4'h0000 , single, write);
-  //spi_transfer(14'h080C, 4'h0003 , single, write);
-  //spi_transfer(14'h0800, 4'h0003 , single, write);
-  //spi_transfer(14'h0800, 4'h0083 , single, write);
-  //spi_transfer(14'h0800, 4'h0083 , single, write);
-  
+  initial begin: TEST_DUMP
 
-  /*
-  // --------------------------
-  //Read and write test to bram
-  // --------------------------  
-   // read loop
-  for(j=0; j<8; j=j+1)
-    begin
-   // spi_transfer(address, data, autoinc, RnW);
-      spi_transfer(bram_addr + j, 0, single, read);
-    end
-    
-  // write loop
-  for(j=0; j<8; j=j+1)
-    begin
-   // spi_transfer(address, data, autoinc, RnW);
-      spi_transfer(bram_addr + j, {j[4:0], 11'h001}, single, write);
-    end
- 
-  // --------------------------
-  //Write test to uart
-  // --------------------------
-  //spi_transfer(uart_addr, 16'hAAAA, single, write);
-  // --------------------------
-  //Write test to mic
-  // --------------------------
-  //spi_transfer(mica_addr, 16'h5555, single, write);
-
-//------------------------------------------
-//             TEST BURST SPI TRANSFER
-//------------------------------------------
-//  spi_burst_transfer(bram_addr, 5'h06, burst, write);
-  spi_burst_transfer(bram_addr, 5'h12, burst, read);
- 
-  spi_burst_transfer(bram_addr, 5'h06, burst, write);
-*/
-
-
-end
-
-   initial begin: TEST_DUMP
-     $dumpfile("system_TB.vcd");
-     $dumpvars(-1, uut,nfc_miso,n );
-     #((PERIOD*DUTY_CYCLE)*15000) $finish;
-   end
+    $dumpfile("system_TB.vcd");
+    $dumpvars(-1);
+    #((PERIOD*DUTY_CYCLE)*75000) $finish;
+  end
 
 endmodule
