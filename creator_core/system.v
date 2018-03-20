@@ -21,7 +21,7 @@ module system #(
   parameter EVERLOOP_FILE = "rtl/wb_everloop/image.ram",
   parameter                  ADDR_WIDTH        = 15                     ,
   parameter                  DATA_WIDTH        = 16                     ,
-  parameter                  GPIO_WIDTH        = 16                     ,
+  parameter                  GPIO_WIDTH        = 12                     ,
   //General Configuration
   parameter                  SYS_FREQ_HZ       = 150_000_000            ,
   parameter                  CLKFX_DIVIDE      = 1                      ,
@@ -90,11 +90,15 @@ module system #(
   /* workaround: resetn signal (P105) has disconnected in the v 1.0 rev 1 */
   input                   i2c_sda        ,
   input                   i2c_scl        ,
-  input                   nrst_deprecated
+  input                   nrst_deprecated,
+  output                  pwm1           ,
+  output                  pwm2           ,
+  output                  pwm3           ,
+  output                  pwm4
 );
 
 //Set up IR
-assign debug_led = ~ir_rx;
+//assign debug_led = ~ir_rx;
 
 assign ir_rx_pi  = ir_rx;
 assign ir_tx     = ir_tx_pi;
@@ -128,6 +132,19 @@ creator_dcm #(
   .nclk_out_200(nclk  ),
   .clk_out_25  (      )
 );
+
+//------------------------------------------------------------------
+// Blinking LED
+//------------------------------------------------------------------
+reg [25:0]  counter;
+always @(posedge clk) begin
+  if(resetn) 
+    counter <= 0;
+  else 
+    counter <= counter + 1;
+end 
+assign debug_led = counter[25];
+
 //------------------------------------------------------------------
 // Whishbone Wires
 //------------------------------------------------------------------
@@ -342,6 +359,44 @@ wb_bram #(
   .wb_ack_o(bram0_ack  )
 );
 //---------------------------------------------------------------------------
+// PWM MCU
+//---------------------------------------------------------------------------
+
+reg pwm_ncs;
+reg ram_ncs;
+
+always@* begin
+if (~mcu_ncs)begin
+   if (mcu_addr[10]) begin 
+   pwm_ncs<=0;
+   ram_ncs<=1;
+   end 
+   else begin
+   pwm_ncs<=1;
+   ram_ncs<=0;
+   end 
+   end else begin
+   pwm_ncs<=1;
+   ram_ncs<=1; 
+   end
+end
+
+mcu_pwm_controller pwm_controller0(
+    .reset        (resetn       ),
+    .pwm_clk      (clk          ), 
+    .pwm_nwe      (mcu_nwe      ), 
+    .pwm_ncs      (pwm_ncs      ), 
+    .pwm_nrd      (mcu_nrd      ), 
+    .pwm_addr     (mcu_addr     ), 
+    .pwm_sram_data(mcu_sram_data), 
+    .pwmout1      (pwm1         ),
+    .pwmout2      (pwm2         ),
+    .pwmout3      (pwm3         ),
+    .pwmout4      (pwm4         )
+);
+
+
+//---------------------------------------------------------------------------
 // MCU BRAM
 //---------------------------------------------------------------------------
 
@@ -362,7 +417,7 @@ wb_mcu_bram #(
   //MCU SAM
   .mcu_clk      (nclk         ),
   .mcu_nwe      (mcu_nwe      ),
-  .mcu_ncs      (mcu_ncs      ),
+  .mcu_ncs      (ram_ncs      ),
   .mcu_nrd      (mcu_nrd      ),
   .mcu_addr     (mcu_addr     ),
   .mcu_sram_data(mcu_sram_data),
