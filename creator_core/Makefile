@@ -20,7 +20,7 @@ EVERLOOP_SRC    = rtl/wb_everloop/everloop_bram.v \
                   rtl/wb_everloop/wb_everloop.v
 
 SPI_SRC         = rtl/wb_spi_slave/wb_spi_slave.v \
-                  rtl/wb_spi_slave/spi_slave.v \
+                  rtl/wb_spi_slave/spi_slave.v 
 
 GPIO_SRC        = rtl/wb_gpio/wb_gpio.v \
                   rtl/wb_gpio/pwm.v \
@@ -29,6 +29,9 @@ GPIO_SRC        = rtl/wb_gpio/wb_gpio.v \
                   rtl/wb_gpio/timer_core.v \
                   rtl/wb_gpio/mux_io.v \
                   rtl/wb_gpio/single_mux.v
+
+PWM_SRC         = rtl/mcu_pwm/mcu_pwm_controller.v \
+				  rtl/mcu_pwm/pwm_motor.v 
 
 SRC             = $(DESIGN).v \
                   creator_dcm.v \
@@ -39,7 +42,8 @@ SRC             = $(DESIGN).v \
                   $(SPI_SRC) \
                   $(UART_SRC) \
                   $(GPIO_SRC) \
-                  $(EVERLOOP_SRC)
+                  $(EVERLOOP_SRC) \
+                  $(PWM_SRC)
 
 SIM_SRC = $(DESIGN)_TB.v          \
           ../thrid_party/unisims/DCM_SP.v     \
