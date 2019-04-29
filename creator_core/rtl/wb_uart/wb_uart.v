@@ -1,20 +1,30 @@
-//---------------------------------------------------------------------------
-// Wishbone UART
-//
-// Register Description:
-//
-//    0x00 UCR      [ 0 | 0 | 0 | tx_busy | 0 | 0 | rx_error | rx_avail ]
-//    0x04 DATA
-//
-//---------------------------------------------------------------------------
+/*
+* Copyright 2018 <Admobilize>
+* MATRIX Labs  [http://creator.matrix.one]
+* This file is part of MATRIX Creator HDL for Spartan 6
+*
+* MATRIX Creator HDL is like free software: you can redistribute
+* it and/or modify it under the terms of the GNU General Public License
+* as published by the Free Software Foundation, either version 3 of the
+* License, or (at your option) any later version.
+
+* This program is distributed in the hope that it will be useful, but
+* WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* General Public License for more details.
+
+* You should have received a copy of the GNU General Public License along
+* with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 module wb_uart #(
-	parameter ADDR_WIDTH = "mandatory",
-	parameter DATA_WIDTH = "mandatory",
-	parameter SYS_FREQ_HZ = "mandatory",
-	parameter FIFO_ADDR_SIZE = 8     ,
-	parameter BAUD_RATE      = 115200,
-	parameter PULSE_WIDTH    = 13
+	parameter ADDR_WIDTH      = "mandatory",
+	parameter DATA_WIDTH      = "mandatory",
+	parameter SYS_FREQ_HZ     = "mandatory",
+	parameter BAUD_RATE       = "mandatory",
+	parameter FIFO_ADDR_SIZE  = 8          ,
+	parameter PULSE_WIDTH     = 13         ,
+	parameter UART_DATA_WIDTH = 8
 ) (
 	input                   clk     ,
 	input                   resetn  ,
@@ -33,16 +43,20 @@ module wb_uart #(
 	output                  uart_irq
 );
 
+	wire wb_rd = wb_stb_i & wb_cyc_i & ~wb_we_i & ~wb_ack_o;
+	wire wb_wr = wb_cyc_i & wb_stb_i & wb_we_i & ~wb_ack_o ;
+
 //---------------------------------------------------------------------------
 // UART engine
 //---------------------------------------------------------------------------
-	wire [7:0] rx_data ;
-	wire       rx_avail;
-	wire       rx_error;
-	wire       rx_ack  ;
-	wire [7:0] tx_data ;
-	reg        tx_wr   ;
-	wire       tx_busy ;
+	wire [UART_DATA_WIDTH-1:0] rx_data;
+	wire [UART_DATA_WIDTH-1:0] tx_data;
+
+	wire rx_avail;
+	wire rx_error;
+	wire rx_ack  ;
+	reg  tx_wr   ;
+	wire tx_busy ;
 
 	uart #(
 		.SYS_FREQ_HZ(SYS_FREQ_HZ),
@@ -50,10 +64,8 @@ module wb_uart #(
 	) uart0 (
 		.clk     (clk     ),
 		.resetn  (resetn  ),
-		//
 		.uart_rxd(uart_rxd),
 		.uart_txd(uart_txd),
-		//
 		.rx_data (rx_data ),
 		.rx_avail(rx_avail),
 		.rx_error(rx_error),
@@ -62,25 +74,49 @@ module wb_uart #(
 		.tx_wr   (tx_wr   ),
 		.tx_busy (tx_busy )
 	);
+	//---------------------------------------------------------------------------
+	// FIFO engine
+	//---------------------------------------------------------------------------
+	wire [UART_DATA_WIDTH-1:0] read_data;
 
-//---------------------------------------------------------------------------
-//
-//---------------------------------------------------------------------------
+	wire read_rx_wishbone; 
+	assign read_rx_wishbone = (wb_adr_i[FIFO_ADDR_SIZE:0]==0) & wb_rd; 
+
+	wire fifo_empty  ;
+	wire read_ack    ;
+	reg  fifo_flush  ;
+	reg  write_enable;
+
+	uart_fifo #(
+		.ADDRESS_WIDTH(FIFO_ADDR_SIZE ),
+		.DATA_WIDTH   (UART_DATA_WIDTH)
+	) uart_fifo0 (
+		.clk         (clk             ),
+		.resetn      (resetn          ),
+		.write_enable(write_enable    ),
+		.write_ack   (rx_ack          ),
+		.data_a      (rx_data         ),
+		.read_enable (read_rx_wishbone),
+		.read_ack    (read_ack        ),
+		.data_b      (read_data       ),
+		.fifo_flush  (fifo_flush      ),
+		.empty       (fifo_empty      )
+	);
 
 
-	wire wb_rd = wb_stb_i & wb_cyc_i & ~wb_we_i & ~wb_ack_o;
-	wire wb_wr = wb_cyc_i & wb_stb_i & wb_we_i & ~wb_ack_o ;
-
-	wire read_rx_wishbone = (wb_adr_i[FIFO_ADDR_SIZE:0]==0) & wb_rd ;
+	wire [DATA_WIDTH-1:0] ucr;
+	assign ucr[7:0]             = {7'b0,fifo_empty};
+	assign ucr[DATA_WIDTH-1-:8] = {4'b0,tx_busy,rx_error,rx_avail,fifo_empty};
 
 	reg [DATA_WIDTH-1:0] wb_dat;
 	assign wb_dat_o = (wb_adr_i[FIFO_ADDR_SIZE:0]==0) ? {ucr[7:0],read_data} : wb_dat ;
 
 	reg wb_ack;
-	assign wb_ack_o = (wb_adr_i[FIFO_ADDR_SIZE:0]==0) ?  read_ack : wb_ack ;
+	assign wb_ack_o = read_ack | wb_ack ;
 
-	reg write_enable;
-
+	//---------------------------------------------------------------------------
+	// IRQ engine
+	//---------------------------------------------------------------------------	
 	reg [PULSE_WIDTH-1:0] pulse_width;
 
 	always @(posedge clk or posedge resetn) begin
@@ -96,36 +132,9 @@ module wb_uart #(
 
 	assign uart_irq = pulse_width[PULSE_WIDTH-1];
 
-	wire [7:0] read_data  ;
-	wire [7:0] fifo_status;
-	reg        fifo_flush ;
-	wire       read_ack   ;
-
-	wire [7:0] read_pointer ;
-	wire [7:0] write_pointer;
-
-	uart_fifo #(
-		.ADDRESS_WIDTH(FIFO_ADDR_SIZE),
-		.DATA_WIDTH   (8             )
-	) uart_fifo0 (
-		.clk          (clk             ),
-		.resetn       (resetn          ),
-		.write_enable (write_enable    ),
-		.write_ack    (rx_ack          ),
-		.data_a       (rx_data         ),
-		.read_enable  (read_rx_wishbone),
-		.read_ack     (read_ack        ),
-		.data_b       (read_data       ),
-		.fifo_flush   (fifo_flush      ),
-		.empty        (fifo_empty      ),
-		.full         (fifo_full       ),
-		.read_pointer (read_pointer    ),
-		.write_pointer(write_pointer   )
-	);
-
-	wire [DATA_WIDTH-1:0] ucr;
-	assign ucr[7:0]             = {7'b0,fifo_empty};
-	assign ucr[DATA_WIDTH-1-:8] = {3'b0,tx_busy,rx_error,rx_avail,fifo_empty,fifo_full};
+	//---------------------------------------------------------------------------
+	// STATE MACHINE
+	//---------------------------------------------------------------------------
 
 	reg [1:0] state_write;
 
@@ -188,9 +197,6 @@ module wb_uart #(
 						2'b00 : begin
 							wb_dat[DATA_WIDTH-1:0] <= ucr;
 						end
-						2'b11 : begin
-							wb_dat[DATA_WIDTH-1:0] <= {write_pointer,read_pointer};
-						end
 						default : begin
 							wb_dat[DATA_WIDTH-1:0] <= 8'b0;
 						end
@@ -212,4 +218,5 @@ module wb_uart #(
 				end
 			end
 		end
+
 endmodule

@@ -31,20 +31,20 @@ module wb_bram #(
   parameter MEM_ADDR_WIDTH = ADDR_WIDTH-7,
   parameter DEPTH          = (1            << MEM_ADDR_WIDTH)
 ) (
-  input                       clk                 ,
-  input                       resetn              ,
+  input                       clk            ,
+  input                       resetn         ,
   //
-  input                       wb_stb_i            ,
-  input                       wb_cyc_i            ,
-  input                       wb_we_i             ,
-  input      [ADDR_WIDTH-1:0] wb_adr_i            ,
-  output reg [DATA_WIDTH-1:0] wb_dat_o            ,
-  input      [DATA_WIDTH-1:0] wb_dat_i            ,
-  input      [           1:0] wb_sel_i            ,
-  output reg                  wb_ack_o            ,
+  input                       wb_stb_i       ,
+  input                       wb_cyc_i       ,
+  input                       wb_we_i        ,
+  input      [ADDR_WIDTH-1:0] wb_adr_i       ,
+  output reg [DATA_WIDTH-1:0] wb_dat_o       ,
+  input      [DATA_WIDTH-1:0] wb_dat_i       ,
+  input      [           1:0] wb_sel_i       ,
+  output reg                  wb_ack_o       ,
   // Microphone Register Configuration
-  output reg [DATA_WIDTH-1:0] mic_sample_rate     ,
-  output reg [DATA_WIDTH-1:0] mic_data_gain       
+  output reg [DATA_WIDTH-1:0] mic_sample_rate,
+  output reg [DATA_WIDTH-1:0] mic_data_gain
 );
 
   wire wb_wr,wb_rd;

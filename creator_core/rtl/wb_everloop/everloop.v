@@ -19,6 +19,7 @@
 
 module everloop #(
   parameter SYS_FREQ_HZ    = "mandatory",
+  parameter DATA_WIDTH     = "mandatory",
   parameter DATA_PERIOD    = 833_000,
   parameter ZERO_HIGH_TIME = 300    ,
   parameter ONE_HIGH_TIME  = 600    ,
@@ -26,110 +27,82 @@ module everloop #(
   parameter [8:0] ZERO_HIGH_COUNTER = $ceil(SYS_FREQ_HZ/($pow(10,9)/(ZERO_HIGH_TIME))),
   parameter [8:0] ONE_HIGH_COUNTER = $ceil(SYS_FREQ_HZ/($pow(10,9)/(ONE_HIGH_TIME)))
 ) (
-  input            clk, rst      ,
-  output reg       everloop_d    ,
-  input      [7:0] data_RGB      ,
-  output           en_rd         ,
-  input            ack           ,
-  input            reset_everloop
-  //  input everloop_select
+  input                       clk             ,
+  input                       resetn          ,
+  input      [DATA_WIDTH-1:0] data_everloop   ,
+  input                       data_en         ,
+  output reg                  everloop_control,
+  output                      send_complete   ,
+  input                       reset_everloop
 );
 
-  reg  [7:0] clk_cnt      ;
-  reg  [2:0] data_cnt     ;
-  reg  [7:0] data_register;
-  reg        sh_e,rd_e,rd_ant;
-  wire       s_data       ;
+  reg [7:0] clk_cnt ;
+  reg [7:0] data_cnt;
 
-  initial begin
-    clk_cnt = 0;
-    data_cnt = 0;
-    data_register = 0;
-    sh_e = 0;
-    rd_e = 0;
-    rd_ant = 0;
-    everloop_d=0;
+  reg [DATA_WIDTH-1:0] data_register;
+
+  reg  shift_enable;
+  wire s_data      ;
+
+  assign send_complete = shift_enable & (data_cnt == DATA_WIDTH);
+  assign s_data        = data_register[DATA_WIDTH-1];
+
+  always @(posedge clk or posedge resetn) begin
+    if (resetn | shift_enable)
+      clk_cnt <= 0;
+    else
+      clk_cnt <= clk_cnt + 1;
   end
 
-  assign s_data = data_register[7];
-
-  always @(posedge clk)
-    begin
-      if (rst | sh_e) begin
-        clk_cnt <= 0;
-      end else begin
-        clk_cnt <= clk_cnt+1;
-      end
-    end
-
-  always @(posedge clk) begin
-    if(rst | ack) begin
-      sh_e     <= 0;
-      data_cnt <= 0;
+  always @(posedge clk or posedge resetn) begin
+    if(resetn | reset_everloop) begin
+      shift_enable <= 0;
+      data_cnt     <= 0;
     end else begin
       if (clk_cnt == DATA_PERIOD_COUNTER) begin
-        sh_e     <= 1'b1;
-        data_cnt <= data_cnt + 1;
+        data_cnt     <= data_cnt + 1;
+        shift_enable <= 1'b1;
+      end else if(data_cnt == DATA_WIDTH) begin
+        data_cnt     <= 0;
+        shift_enable <= 0;
       end else begin
-        sh_e     <= 1'b0;
-        data_cnt <= data_cnt;
+        shift_enable <= 1'b0;
+        data_cnt     <= data_cnt;
       end
     end
   end
 
-  always @(posedge clk) begin
-    if(rst) begin
-      rd_e   <= 0;
-      rd_ant <= 0;
-    end else begin
-      rd_ant <= rd_e;
-      if (data_cnt == 3'd0 ) begin
-        rd_e <= 1'b1;
-      end else begin
-        rd_e <= 1'b0;
-      end
-    end
-  end
-
-
-  always @(posedge clk) begin
-
-    if(rst) begin
+  always @(posedge clk or posedge resetn) begin
+    if(resetn | reset_everloop) begin
       data_register <= 0;
     end else begin
-      if(ack) begin
-        data_register <= data_RGB;
+      if(data_en) begin
+        data_register <= {data_everloop[7:0],data_everloop[DATA_WIDTH-1-:8]};
+      end else if(shift_enable) begin
+        data_register <= data_register << 1;
       end else begin
-        if(sh_e) begin
-          data_register <= data_register << 1;
-        end else begin
-          data_register <= data_register;
-        end
+        data_register <= data_register;
       end
     end
-
   end
 
-  assign en_rd = rd_e & ~ rd_ant;
-
-  always @(posedge clk) begin
-
-    if(rst | reset_everloop ) begin
-      everloop_d <= 0;
+  always @(posedge clk or posedge resetn) begin
+    if(resetn | reset_everloop) begin
+      everloop_control <= 0;
     end else begin
       case(s_data)
         1'b0 : begin
           if(clk_cnt < ZERO_HIGH_COUNTER) begin
-            everloop_d <= 1;
+            everloop_control <= 1;
           end else begin
-            everloop_d <= 0;
+            everloop_control <= 0;
           end
         end
         1'b1 : begin
           if(clk_cnt < ONE_HIGH_COUNTER ) begin
-            everloop_d <= 1;
+            everloop_control <= 1;
           end else begin
-            everloop_d <= 0;
+            everloop_control <= 0;
           end
         end
       endcase

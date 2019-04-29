@@ -1,70 +1,69 @@
 /*
- * Copyright 2016 <Admobilize>
- * MATRIX Labs  [http://creator.matrix.one]
- * This file is part of MATRIX Creator HDL for Spartan 6
- *
- * MATRIX Creator HDL is like free software: you can redistribute 
- * it and/or modify it under the terms of the GNU General Public License 
- * as published by the Free Software Foundation, either version 3 of the 
- * License, or (at your option) any later version.
+* Copyright 2016 <Admobilize>
+* MATRIX Labs  [http://creator.matrix.one]
+* This file is part of MATRIX Creator HDL for Spartan 6
+*
+* MATRIX Creator HDL is like free software: you can redistribute
+* it and/or modify it under the terms of the GNU General Public License
+* as published by the Free Software Foundation, either version 3 of the
+* License, or (at your option) any later version.
 
- * This program is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
- * General Public License for more details.
+* This program is distributed in the hope that it will be useful, but
+* WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* General Public License for more details.
 
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+* You should have received a copy of the GNU General Public License along
+* with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 module pwm #(
-  parameter CORE_WIDTH = 4,
+  parameter CORE_WIDTH        = 4 ,
   parameter PWM_COUNTER_WIDTH = 16
-)(
-  input clk,
-  input rst,
-  
+) (
+  input                                       clk   ,
+  input                                       rst   ,
   //PWM
-  input  [PWM_COUNTER_WIDTH-1 : 0 ] period,
-  input  [PWM_COUNTER_WIDTH*CORE_WIDTH:0] duty,
-
-  output reg [CORE_WIDTH-1:0] pwm);
-
-
-reg[PWM_COUNTER_WIDTH-1:0] counter;
+  input      [         PWM_COUNTER_WIDTH-1:0] period,
+  input      [PWM_COUNTER_WIDTH*CORE_WIDTH:0] duty  ,
+  output reg [                CORE_WIDTH-1:0] pwm
+);
 
 
-initial begin
-counter = 0;
-pwm = 0;
-end
+  reg[PWM_COUNTER_WIDTH-1:0] counter;
 
-genvar i;
-generate 
-  for(i=0; i < CORE_WIDTH ; i=i+1) begin:pwm_out
-    always@(*)begin 
-      if(counter < duty[((i+1)*PWM_COUNTER_WIDTH)-1-:16])
-        pwm[i] = 1'b1;
-      else
-        pwm[i] = 1'b0;
-   end
-  end      
-endgenerate
 
-always @(posedge clk or posedge rst) begin
-  if (rst) begin
-    counter <= 0;
-  end else begin
-    if(counter > period )
+  initial begin
+    counter = 0;
+    pwm = 0;
+  end
+
+  genvar i;
+  generate
+    for(i=0; i < CORE_WIDTH ; i=i+1) begin:pwm_out
+      always@(*)begin
+        if(counter < duty[((i+1)*PWM_COUNTER_WIDTH)-1-:16])
+          pwm[i] = 1'b1;
+        else
+          pwm[i] = 1'b0;
+      end
+    end
+  endgenerate
+
+  always @(posedge clk or posedge rst) begin
+    if (rst) begin
       counter <= 0;
-    else
-      counter <= counter + 1;
-   end
-end
+    end else begin
+      if(counter > period )
+        counter <= 0;
+      else
+        counter <= counter + 1;
+    end
+  end
 
-  
-  
-endmodule 
-  
 
-  
+
+endmodule
+
+
+
