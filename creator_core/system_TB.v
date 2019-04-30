@@ -432,8 +432,11 @@ end
     uart_rxd <= 1;
     #0 pdm_data <= 8'hAA;
     @ (reset_done_trigger);
-    spi_transfer_pi(15'h4000, 0, write);
-    spi_burst_transfer(15'h4000, 5'h12, write);
+    spi_transfer_pi(15'h7001, 16'h01, write);
+    spi_transfer_pi(15'h7000, 16'h01, write);
+     spi_transfer_pi(15'h7001, 16'h02, write);
+    spi_transfer_pi(15'h7001, 16'h0A, read);
+    spi_burst_transfer(15'h6000, 5'h12, write);
     uart_rx(9'hAA);
     #50000
     uart_rx(9'hAB);
@@ -441,7 +444,7 @@ end
     uart_rx(9'hAC);
     #30000
     spi_transfer_pi(15'h1000, 0, read);
-    spi_transfer_pi(15'h1000, 0, read);
+    spi_transfer_pi(15'h1101, 0, read);
 
   end
 

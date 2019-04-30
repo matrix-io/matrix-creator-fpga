@@ -21,119 +21,77 @@ module wb_everloop #(
   parameter MEM_FILE_NAME = "none" ,
   parameter SYS_FREQ_HZ = "mandatory",
   parameter DATA_WIDTH = "mandatory",
-  parameter ADDR_WIDTH = "mandatory"
+  parameter ADDR_WIDTH = "mandatory",
+  parameter N_LEDS = "mandatory",
+  parameter MEM_ADDR_WIDTH = 8
 ) (
-  input                       clk         ,
-  input                       resetn      ,
-  input                       led_fb      ,
-  input                       wb_stb_i    ,
-  input                       wb_cyc_i    ,
-  input                       wb_we_i     ,
-  input      [           1:0] wb_sel_i    ,
-  input      [ADDR_WIDTH-1:0] wb_adr_i    ,
-  input      [DATA_WIDTH-1:0] wb_dat_i    ,
-  output     [DATA_WIDTH-1:0] wb_dat_o    ,
-  output reg                  wb_ack_o    ,
+  input                   clk         ,
+  input                   resetn      ,
+  input                   led_fb      ,
+  input                   wb_stb_i    ,
+  input                   wb_cyc_i    ,
+  input                   wb_we_i     ,
+  input  [           1:0] wb_sel_i    ,
+  input  [ADDR_WIDTH-1:0] wb_adr_i    ,
+  input  [DATA_WIDTH-1:0] wb_dat_i    ,
+  output [DATA_WIDTH-1:0] wb_dat_o    ,
+  output                  wb_ack_o    ,
   //Everloop
-  output                      everloop_ctl
+  output                  everloop_ctl
 );
-
-  localparam MEM_ADDR_WIDTH = 8;
-  localparam MEM_DATA_WIDTH = DATA_WIDTH/2;
 
   wire wb_rd = wb_stb_i & wb_cyc_i & ~wb_we_i & ~wb_ack_o;
   wire wb_wr = wb_stb_i & wb_cyc_i & wb_we_i & ~wb_ack_o ;
 
-  reg [2:0] swr;
+  wire [MEM_ADDR_WIDTH-1:0] adr_b;
 
-  always @(posedge clk)  swr <= {swr[1:0],wb_wr};
+  wire [DATA_WIDTH-1:0] data_everloop;
+  reg  [DATA_WIDTH-1:0] data_a       ;
 
-  reg  [MEM_ADDR_WIDTH-1:0] adr_a ;
-  reg  [MEM_ADDR_WIDTH-1:0] adr_b ;
-  wire [MEM_DATA_WIDTH-1:0] data_b;
+  wire reset_everloop;
+  wire read_en       ;
 
-  reg [DATA_WIDTH-1:0] data_a;
 
-  wire en_b,ack_b;
-  reg  reset_everloop;
-
-  everloop #(.SYS_FREQ_HZ(SYS_FREQ_HZ)) everloop0 (
-    .clk           (clk           ),
-    .rst           (resetn        ),
-    .everloop_d    (everloop_ctl  ),
-    
-    .ack           (ack_b         ),
-    .en_rd         (en_b          ),
-    .data_RGB      (data_b        ),
-    .reset_everloop(reset_everloop)
+  everloop #(
+    .SYS_FREQ_HZ(SYS_FREQ_HZ),
+    .DATA_WIDTH (DATA_WIDTH )
+  ) everloop0 (
+    .clk             (clk           ),
+    .resetn          (resetn        ),
+    .send_complete   (send_complete ),
+    .data_everloop   (data_everloop ),
+    .data_en         (read_en       ),
+    .everloop_control(everloop_ctl  ),
+    .reset_everloop  (reset_everloop)
   );
 
   everloop_ram #(
     .ADDR_WIDTH   (MEM_ADDR_WIDTH),
-    .DATA_WIDTH   (MEM_DATA_WIDTH),
+    .DATA_WIDTH   (DATA_WIDTH    ),
     .MEM_FILE_NAME(MEM_FILE_NAME )
   ) everloopram0 (
     // write port a
-    .clk_a(clk                       ),
-    .en_a (swr[1] | swr[2]           ),
-    .adr_a(adr_a                     ),
-    .dat_a(data_a[MEM_ADDR_WIDTH-1:0]),
-    .we_a (swr[1] | swr[2]           ),
+    .clk  (clk                         ),
+    .adr_a(wb_adr_i[MEM_ADDR_WIDTH-1:0]),
+    .dat_a(wb_dat_i                    ),
+    .we_a (wb_wr                       ),
+    .ack_a(wb_ack_o                    ),
     // read port b
-    .clk_b(clk                       ),
-    .en_b (en_b                      ),
-    .adr_b(adr_b                     ),
-    .ack_b(ack_b                     ),
-    .dat_b(data_b                    )
+    .adr_b(adr_b                       ),
+    .dat_b(data_everloop               )
   );
 
-  reg [3:0] clk_cnt;
+  everloop_fsm #(
+    .SYS_FREQ_HZ(SYS_FREQ_HZ),
+    .N_LEDS     (N_LEDS     )
+  ) everloop_fsm0 (
+    .clk           (clk           ),
+    .resetn        (resetn        ),
+    .send_complete (send_complete ),
+    .read_en       (read_en       ),
+    .read_count    (adr_b         ),
+    .reset_everloop(reset_everloop)
+  );
 
-  always @(posedge clk or posedge resetn) begin
-    if(resetn) begin
-      adr_b          <= 0;
-      reset_everloop <= 1;
-      clk_cnt        <= 0;
-    end else begin
-      if(en_b)
-        if(adr_b == 140) begin
-          clk_cnt <= clk_cnt +1;
-          if(clk_cnt < 4'd10) begin
-            reset_everloop <= 1;
-          end else adr_b <= 0;
-        end else begin
-        adr_b          <= adr_b+1;
-        reset_everloop <= 0;
-        clk_cnt        <= 0;
-      end
-    end
-  end
-
-  always @(posedge clk or posedge resetn) begin
-    if(resetn) begin
-      adr_a    <= 0;
-      data_a   <= 0;
-      wb_ack_o <= 0;
-    end
-    else begin
-      wb_ack_o <= 0;
-      case({wb_wr,swr[1]})
-        2'b10 : begin
-          data_a   <= wb_dat_i;
-          wb_ack_o <= 1;
-          adr_a    <= {wb_adr_i[MEM_ADDR_WIDTH-2:0],1'b0};
-        end
-        2'b01 : begin
-          data_a <= data_a >> 8;
-          adr_a  <= {adr_a[MEM_ADDR_WIDTH-1:1],1'b1};
-        end
-
-        default : begin
-          data_a <= data_a;
-          adr_a  <= adr_a;
-        end
-      endcase
-    end
-  end
 
 endmodule

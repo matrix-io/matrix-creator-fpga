@@ -8,7 +8,7 @@ module uart_fifo #(
   parameter DATA_WIDTH    = "mandatory"
 ) (
   input                       clk         ,
-  input                       resetn       ,
+  input                       resetn      ,
   // write port a
   input                       write_enable,
   output reg                  write_ack   ,
@@ -19,12 +19,11 @@ module uart_fifo #(
   output reg [DATA_WIDTH-1:0] data_b      ,
   //status
   input                       fifo_flush,
-  output                      empty,
-  output                      full,
-
-  output reg [ADDRESS_WIDTH-1:0] read_pointer,
-  output reg [ADDRESS_WIDTH-1:0] write_pointer
+  output                      empty
 );
+
+  reg [ADDRESS_WIDTH-1:0] read_pointer;
+  reg [ADDRESS_WIDTH-1:0] write_pointer;
 
   initial begin
     write_ack = 0;
@@ -43,7 +42,6 @@ module uart_fifo #(
       read_pointer <= read_pointer + 1;
     end
   end
-
 
   always @(posedge clk or posedge resetn) begin
     if(resetn | fifo_flush) begin

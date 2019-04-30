@@ -3,10 +3,10 @@
 // File Name   : uart.v
 //-----------------------------------------------------
 module uart #(
-	parameter SYS_FREQ_HZ   = 100000000,
-	parameter BAUD_RATE  = 115200   
+	parameter SYS_FREQ_HZ = 100000000,
+	parameter BAUD_RATE   = 115200
 ) (
-	input            resetn   ,
+	input            resetn  ,
 	input            clk     ,
 	// UART lines
 	input            uart_rxd,
@@ -27,7 +27,7 @@ module uart #(
 //-----------------------------------------------------------------
 	reg [15:0] enable16_counter;
 
-	wire    enable16;
+	wire enable16;
 	assign enable16 = (enable16_counter == 0);
 
 	always @(posedge clk)
@@ -57,10 +57,10 @@ module uart #(
 //-----------------------------------------------------------------
 // UART RX Logic
 //-----------------------------------------------------------------
-	reg       rx_busy;
-	reg [3:0] rx_count16;
+	reg       rx_busy    ;
+	reg [3:0] rx_count16 ;
 	reg [3:0] rx_bitcount;
-	reg [7:0] rxd_reg;
+	reg [7:0] rxd_reg    ;
 
 	always @ (posedge clk)
 		begin
@@ -115,15 +115,15 @@ module uart #(
 // UART TX Logic
 //-----------------------------------------------------------------
 	reg [3:0] tx_bitcount;
-	reg [3:0] tx_count16;
-	reg [7:0] txd_reg;
+	reg [3:0] tx_count16 ;
+	reg [7:0] txd_reg    ;
 
 	always @ (posedge clk)
 		begin
 			if (resetn) begin
-				tx_busy     <= 0;
-				uart_txd    <= 1;
-				tx_count16  <= 0;
+				tx_busy    <= 0;
+				uart_txd   <= 1;
+				tx_count16 <= 0;
 			end else begin
 				if (tx_wr && !tx_busy) begin
 					txd_reg     <= tx_data;
@@ -133,7 +133,7 @@ module uart #(
 				end
 
 				if (enable16) begin
-					tx_count16  <= tx_count16 + 1;
+					tx_count16 <= tx_count16 + 1;
 
 					if ((tx_count16 == 0) && tx_busy) begin
 						tx_bitcount <= tx_bitcount + 1;
@@ -144,7 +144,7 @@ module uart #(
 							uart_txd <= 'b1;
 						end else if (tx_bitcount == 10) begin
 							tx_bitcount <= 0;
-							tx_busy  <= 0;
+							tx_busy     <= 0;
 						end else begin
 							uart_txd <= txd_reg[0];
 							txd_reg  <= { 1'b0, txd_reg[7:1] };

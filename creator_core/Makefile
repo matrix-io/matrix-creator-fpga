@@ -4,10 +4,22 @@ PINS            = $(UCF).ucf
 DEVICE          = xc6slx4-2tqg144
 BGFLAGS         = -g TdoPin:PULLNONE -g DonePin:PULLUP \
                   -g CRC:enable -g StartUpClk:CCLK
-
+ISE_SIM_ROOT		= /opt/Xilinx/14.7/ISE_DS/ISE/verilog/src
 XILINXCADROOT   = /opt/Xilinx/14.7/ISE_DS/ISE/bin/lin/ise
 SIMGEN_OPTIONS  = -p $(FPGA_ARCH) -lang $(LANGUAGE)
 IVERILOG        = iverilog
+
+
+MIC_SRC         = rtl/wb_mic_array/cic_comb.v \
+                  rtl/wb_mic_array/cic_sync.v \
+                  rtl/wb_mic_array/cic_int.v \
+                  rtl/wb_mic_array/cic.v \
+                  rtl/wb_mic_array/mic_array.v \
+                  rtl/wb_mic_array/mic_array_buffer.v \
+                  rtl/wb_mic_array/cic_op_fsm.v \
+                  rtl/wb_mic_array/fir.v \
+                  rtl/wb_mic_array/fir_pipe_fsm.v \
+                  rtl/wb_mic_array/wb_mic_array.v  
 
 MCU_SRC         = rtl/wb_mcu_bram/wb_mcu_bram.v
 
@@ -17,6 +29,7 @@ UART_SRC        = rtl/wb_uart/uart.v \
 
 EVERLOOP_SRC    = rtl/wb_everloop/everloop_bram.v \
                   rtl/wb_everloop/everloop.v \
+                  rtl/wb_everloop/everloop_fsm.v \
                   rtl/wb_everloop/wb_everloop.v
 
 SPI_SRC         = rtl/wb_spi_slave/wb_spi_slave.v \
@@ -30,6 +43,8 @@ GPIO_SRC        = rtl/wb_gpio/wb_gpio.v \
                   rtl/wb_gpio/mux_io.v \
                   rtl/wb_gpio/single_mux.v
 
+ZWAVE_GPIO 			=	rtl/wb_zwave_gpio/wb_zwave_gpio.v
+
 SRC             = $(DESIGN).v \
                   creator_dcm.v \
                   rtl/wb_bram/bram.v \
@@ -37,8 +52,10 @@ SRC             = $(DESIGN).v \
                   rtl/wb_conbus/conbus.v \
                   $(MCU_SRC) \
                   $(SPI_SRC) \
+                  $(MIC_SRC) \
                   $(UART_SRC) \
                   $(GPIO_SRC) \
+                  $(ZWAVE_GPIO) \
                   $(EVERLOOP_SRC)
 
 SIM_SRC = $(DESIGN)_TB.v          \
@@ -46,13 +63,13 @@ SIM_SRC = $(DESIGN)_TB.v          \
           ../thrid_party/unisims/BUFG.v   \
           ../thrid_party/unisims/IBUFG.v
 
- 
+
 all:            bits
 
 remake:         clean-build all
 
 clean:
-	rm -f *~ */*~ a.out *.log *.key *.edf *.ps trace.dat 
+	rm -f *~ */*~ a.out *.log *.key *.edf *.ps trace.dat
 	rm -f *.bit
 	rm -rf build
 
@@ -115,9 +132,8 @@ postsim: build/project.ngc
 	cd build && vvp $(DESIGN).bin
 	gtkwave build/$(DESIGN)_TB.vcd&
 
-
 iversim: build/project.src
-	$(IVERILOG) -gno-io-range-error -o simulation/$(DESIGN)_TB.vvp $(VINCDIR) $(SRC) $(SIM_SRC) -s $(DESIGN)_TB
+	$(IVERILOG) -g2012 -gno-io-range-error -o simulation/$(DESIGN)_TB.vvp $(VINCDIR) $(SRC) $(SIM_SRC) -s $(DESIGN)_TB -y $(ISE_SIM_ROOT) -y $(ISE_SIM_ROOT)/unisims -y $(ISE_SIM_ROOT)/unimacro -y $(ISE_SIM_ROOT)/simprims
 	vvp simulation/$(DESIGN)_TB.vvp; mv $(DESIGN)_TB.vcd simulation/
 	gtkwave simulation/$(DESIGN)_TB.vcd&
 
