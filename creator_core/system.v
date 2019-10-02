@@ -63,8 +63,8 @@ module system #(
   input                   mcu_nrd        ,
   input  [          10:0] mcu_addr       , //TODO(andres.calderon): parameterize
   inout  [           7:0] mcu_sram_data  , //TODO(andres.calderon): parameterize
-  input                   mcu_tx,
-  output                  mcu_rx,
+  input                   sam_mcu_rx,
+  output                  sam_mcu_tx,
 
   /* IR */
   input                   ir_rx          ,
@@ -113,8 +113,8 @@ assign zigbee_tx = 0;
 //  assign uart_tx_pi = zigbee_rx;
 
 
-  assign mcu_tx  = uart_rx_pi;
-  assign uart_tx_pi = mcu_rx;
+  assign sam_mcu_tx  = uart_rx_pi;
+  assign uart_tx_pi = sam_mcu_rx;
 //Set up NFC PN512
   assign nfc_cs     = ss1;
   assign nfc_sck    = sck;

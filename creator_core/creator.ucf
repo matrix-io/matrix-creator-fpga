@@ -95,8 +95,8 @@ NET "mcu_addr<2>"  LOC = "P61"  | IOSTANDARD = LVCMOS33;
 NET "mcu_addr<1>"  LOC = "P62"  | IOSTANDARD = LVCMOS33;
 NET "mcu_addr<0>"  LOC = "P66"  | IOSTANDARD = LVCMOS33;
  
-NET "mcu_tx" LOC = "P2" | IOSTANDARD = LVCMOS33;
-NET "mcu_rx" LOC = "P5" | IOSTANDARD = LVCMOS33;
+NET "sam_mcu_rx" LOC = "P2" | IOSTANDARD = LVCMOS33;
+NET "sam_mcu_tx" LOC = "P5" | IOSTANDARD = LVCMOS33;
 
 #DATA BUS
 NET "mcu_sram_data<7>"  LOC = "P137" | IOSTANDARD = LVCMOS33;
