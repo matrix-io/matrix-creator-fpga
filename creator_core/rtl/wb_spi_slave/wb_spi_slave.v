@@ -1,6 +1,9 @@
 /*
-* Copyright 2016 <Admobilize>
+* Copyright 2016-2020 MATRIX Labs
 * MATRIX Labs  [http://creator.matrix.one]
+* Authors: Andres Calderon <andres.calderon@admobilize.com>
+*          Kevin Patiño    <kevin.patino@admobilize.com>        
+*
 * This file is part of MATRIX Creator HDL for Spartan 6
 *
 * MATRIX Creator HDL is like free software: you can redistribute
